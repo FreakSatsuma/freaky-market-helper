@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Freaky Market Helper
 // @namespace    https://www.torn.com/profiles.php?XID=4313844
-// @version      1.6.1
+// @version      1.6.2
 // @description  Fill your Torn Item Market and Bazaar listings in one click. Prices from the cheapest listing, average price, market value or live bazaars (weav3r.dev), with your own formulas and min/max ranges, quantity rules, favourites with Fill All, a session receipt and a dollar bazaar mode. Settings are kept separately for the Item Market and the Bazaar.
 // @author       FreakSatsuma [4313844]
 // @license      MIT License
@@ -68,7 +68,7 @@
     }
 
     // Keep in sync with @version above — it keys the "What's new" popup.
-    const SCRIPT_VERSION = "1.6.1";
+    const SCRIPT_VERSION = "1.6.2";
 
     const itemUrl = "https://api.torn.com/torn/{itemId}?selections=items&key={apiKey}&comment=MarketFiller";
     const marketUrlV2 = "https://api.torn.com/v2/market?id={itemId}&selections=itemMarket&key={apiKey}&comment=MarketFiller";
@@ -274,6 +274,14 @@
     // Write every line for a player, not a developer: one short sentence, plain words,
     // what changed for them rather than what changed in the code.
     const CHANGELOG = [
+        {
+            version: "1.6.2",
+            date: "2026-10-20",
+            changes: [
+                'Fixed: the Update button did not show up on the Bazaar Manage page. It now sits next to each active listing and re-prices it with your Bazaar setting.',
+                'Fixed: item names on the bazaar receipt no longer start with the "x3" count.'
+            ]
+        },
         {
             version: "1.6.1",
             date: "2026-10-20",
@@ -1788,7 +1796,7 @@
 
     // The row's amount box: Torn's money-style input on the Item Market, a plain text box on the bazaar.
     function rowAmountInputs(row){
-        return Array.from(row.querySelectorAll('[class^=amountInputWrapper___] .input-money-group > .input-money, .amount .clear-all[type=text]'));
+        return Array.from(row.querySelectorAll('[class^=amountInputWrapper___] .input-money-group > .input-money, .amount .clear-all:not([type=hidden])'));
     }
 
     function findParentByCondition(element, conditionFn){
@@ -2433,8 +2441,8 @@
                     // The image and the price box can sit in different cells; widen the row until
                     // it also holds the amount box, without ever swallowing a neighbouring row.
                     let row = el;
-                    for (let up = 0; up < 4 && row.querySelector('.amount .clear-all[type=text]') == null && row.parentElement != null
-                         && row.parentElement.querySelectorAll('.input-money[type=text]').length === 1; up++){
+                    for (let up = 0; up < 4 && row.querySelector('.amount .clear-all:not([type=hidden])') == null && row.parentElement != null
+                         && row.parentElement.querySelectorAll('.input-money:not([type=hidden])').length === 1; up++){
                         row = row.parentElement;
                     }
                     return { row: row, itemId: parseInt(match[1], 10) };
@@ -2519,7 +2527,7 @@
 
     // Add Items and Manage rows on the bazaar get the same Fill button, select box and star as the Item Market.
     function scanBazaarRows(root){
-        root.querySelectorAll('.input-money[type=text]').forEach(function(input){
+        root.querySelectorAll('.input-money:not([type=hidden])').forEach(function(input){
             if (input.closest('[class*=removeAmountInput]') != null){
                 return;
             }
@@ -2559,7 +2567,7 @@
     }
 
     function scanBazaarInputs(root){
-        root.querySelectorAll('.input-money[type=text]').forEach(function(input){
+        root.querySelectorAll('.input-money:not([type=hidden])').forEach(function(input){
             if (input.dataset.tmfBazaar != null || input.closest('[class*=removeAmountInput]') != null){
                 return;
             }
@@ -2569,7 +2577,7 @@
             }
             input.dataset.tmfBazaar = '1';
             input.addEventListener('focus', function(){ onBazaarPriceFocus(input, found.itemId, found.row); });
-            let amountInput = found.row.querySelector('.amount .clear-all[type=text]');
+            let amountInput = found.row.querySelector('.amount .clear-all:not([type=hidden])');
             if (amountInput != null && amountInput.dataset.tmfBazaarAmountBound == null){
                 amountInput.dataset.tmfBazaarAmountBound = '1';
                 amountInput.addEventListener('focus', function(){ onBazaarAmountFocus(amountInput, found.row); });
@@ -2639,6 +2647,11 @@
         let nameWrap = wrapper != null ? wrapper.querySelector('.name-wrap') : null;
         if (nameWrap != null){
             // The bazaar row's name box also holds the "xN" count; leave that out.
+            // The row's name box repeats the count ("x3") around the name; the name itself has its own span.
+            let nameSpan = nameWrap.querySelector('.t-overflow');
+            if (nameSpan != null && nameSpan.textContent.trim() !== ''){
+                return nameSpan.textContent.trim();
+            }
             let copy = nameWrap.cloneNode(true);
             copy.querySelectorAll('.t-hide').forEach(function(el){ el.remove(); });
             let named = copy.textContent.trim();
