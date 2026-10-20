@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Freaky Market Helper
 // @namespace    https://www.torn.com/profiles.php?XID=4313844
-// @version      1.6.4
+// @version      1.6.6
 // @description  Fill your Torn Item Market and Bazaar listings in one click. Prices from the cheapest listing, average price, market value or live bazaars (weav3r.dev), with your own formulas and min/max ranges, quantity rules, favourites with Fill All, a session receipt and a dollar bazaar mode. Settings are kept separately for the Item Market and the Bazaar.
 // @author       FreakSatsuma [4313844]
 // @license      MIT License
@@ -68,7 +68,7 @@
     }
 
     // Keep in sync with @version above — it keys the "What's new" popup.
-    const SCRIPT_VERSION = "1.6.4";
+    const SCRIPT_VERSION = "1.6.6";
 
     const itemUrl = "https://api.torn.com/torn/{itemId}?selections=items&key={apiKey}&comment=MarketFiller";
     const marketUrlV2 = "https://api.torn.com/v2/market?id={itemId}&selections=itemMarket&key={apiKey}&comment=MarketFiller";
@@ -128,6 +128,25 @@
     let quantityModeRaw = (isBazaarPage
         ? (localStorage.getItem(QUANTITY_KEY_BAZAAR) ?? localStorage.getItem(QUANTITY_KEY_MARKET))
         : localStorage.getItem(QUANTITY_KEY_MARKET)) ?? 'max';
+    // Rounding of the final listed price: 0 leaves it exact, otherwise the price is rounded to
+    // a multiple of that step ($10, $100, $1,000): the nearest one, always down, or always up.
+    // Kept per page like the rest.
+    const ROUNDING_KEY_MARKET = "freaky-market-helper-rounding";
+    const ROUNDING_KEY_BAZAAR = "freaky-market-helper-bazaar-rounding";
+    const ROUNDING_DIR_KEY_MARKET = "freaky-market-helper-rounding-dir";
+    const ROUNDING_DIR_KEY_BAZAAR = "freaky-market-helper-bazaar-rounding-dir";
+    const ROUNDING_STEPS = [0, 10, 100, 1000];
+    const ROUNDING_DIRS = ['nearest', 'down', 'up'];
+    function readRoundingDir(key){
+        let value = localStorage.getItem(key);
+        return ROUNDING_DIRS.indexOf(value) !== -1 ? value : 'nearest';
+    }
+    function readRounding(key){
+        let value = parseInt(localStorage.getItem(key) ?? '0', 10);
+        return ROUNDING_STEPS.indexOf(value) !== -1 ? value : 0;
+    }
+    let roundingStep = readRounding(isBazaarPage ? ROUNDING_KEY_BAZAAR : ROUNDING_KEY_MARKET);
+    let roundingDir = readRoundingDir(isBazaarPage ? ROUNDING_DIR_KEY_BAZAAR : ROUNDING_DIR_KEY_MARKET);
     let apiKey = localStorage.getItem("freaky-market-helper-apikey") ?? '###PDA-APIKEY###';
     try {
         GM_registerMenuCommand('Open Settings', openSettingsModal);
@@ -165,25 +184,47 @@
 .tmf-select.tmf-select--on{background:var(--tmf-accent-d);border-color:var(--tmf-accent);color:#fff}
 
 /* Fill All bar */
-.tmf-fillall-bar{position:fixed;bottom:110px;right:16px;display:flex;align-items:center;gap:8px;padding:6px 8px 6px 6px;background:rgba(22,24,29,.92);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border:1px solid var(--tmf-line);border-radius:999px;box-shadow:0 6px 20px rgba(0,0,0,.45);z-index:999999;touch-action:none;transition:box-shadow .2s ease,border-color .2s}
-.tmf-fillall-grip{cursor:grab;color:var(--tmf-dim);font-size:14px;line-height:1;letter-spacing:-2px;min-width:14px;text-align:center;align-self:center;user-select:none;-webkit-user-select:none}
+.tmf-fillall-bar{position:fixed;bottom:110px;right:16px;width:204px;box-sizing:border-box;background:rgba(22,24,29,.96);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border:1px solid var(--tmf-line);border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,.45);z-index:999999;touch-action:none;overflow:hidden;transition:box-shadow .2s ease,border-color .2s}
+.tmf-fillall-head{display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:pointer;color:#e6e9f0;font:700 12px/1 -apple-system,Segoe UI,Roboto,sans-serif;letter-spacing:.02em;user-select:none;-webkit-user-select:none}
+.tmf-fillall-title{flex:1 1 auto;white-space:nowrap}
+.tmf-fillall-chev{flex:0 0 auto;color:#9aa1b0;font-size:10px;transition:transform .2s}
+.tmf-fillall-bar--min .tmf-fillall-chev{transform:rotate(-90deg)}
+.tmf-fillall-grip{cursor:grab;color:var(--tmf-dim);font-size:14px;line-height:1;letter-spacing:-2px;min-width:14px;text-align:center;user-select:none;-webkit-user-select:none}
 .tmf-fillall-bar--dragging{cursor:grabbing;opacity:.92}
 .tmf-fillall-bar--dragging .tmf-fillall-grip{cursor:grabbing}
-.tmf-fillall-cog{cursor:pointer;flex:0 0 auto;display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.08);color:#cfd3dc;font-size:14px;line-height:1;user-select:none;-webkit-user-select:none;transition:background .15s,transform .3s}
-.tmf-fillall-cog:hover{background:rgba(255,255,255,.2);color:#fff;transform:rotate(60deg)}
-.tmf-fillall-report{cursor:pointer;flex:0 0 auto;display:flex;align-items:center;gap:4px;height:26px;padding:0 9px;border-radius:999px;background:rgba(255,255,255,.08);color:#cfd3dc;font:600 11px/1 -apple-system,Segoe UI,Roboto,sans-serif;user-select:none;-webkit-user-select:none;transition:background .15s}
-.tmf-fillall-report:hover{background:rgba(255,255,255,.2);color:#fff}
-.tmf-fillall-dollar{cursor:pointer;flex:0 0 auto;display:flex;align-items:center;justify-content:center;height:26px;min-width:30px;padding:0 8px;border-radius:999px;background:rgba(255,255,255,.08);color:#cfd3dc;font:700 12px/1 -apple-system,Segoe UI,Roboto,sans-serif;user-select:none;-webkit-user-select:none;transition:background .15s,color .15s}
-.tmf-fillall-dollar:hover{background:rgba(255,255,255,.2);color:#fff}
+.tmf-fillall-body{display:flex;flex-direction:column;gap:6px;padding:8px 8px 8px;border-top:1px solid var(--tmf-line)}
+.tmf-fillall-cog,.tmf-fillall-report,.tmf-fillall-dollar{cursor:pointer;display:flex;align-items:center;gap:8px;height:30px;padding:0 10px;border-radius:8px;background:rgba(255,255,255,.08);color:#dfe3ea;font:600 12px/1 -apple-system,Segoe UI,Roboto,sans-serif;user-select:none;-webkit-user-select:none;transition:background .15s,color .15s}
+.tmf-fillall-cog:hover,.tmf-fillall-report:hover,.tmf-fillall-dollar:hover{background:rgba(255,255,255,.2);color:#fff}
+.tmf-fillall-cog .tmf-cog-icon,.tmf-fillall-report .tmf-report-icon{font-size:14px;line-height:1;width:16px;text-align:center}
+.tmf-fillall-report .tmf-report-label,.tmf-fillall-cog .tmf-cog-label{flex:1 1 auto}
 .tmf-fillall-dollar.tmf-fillall-dollar--on{background:var(--tmf-warn);color:#2a1d00;box-shadow:0 0 8px rgba(251,191,36,.55)}
 .tmf-report-count:empty{display:none}
-.tmf-report-count{background:var(--tmf-accent-d);color:#fff;border-radius:999px;padding:2px 6px}
-.tmf-fillall-btn.torn-btn{all:unset;box-sizing:border-box;cursor:pointer;padding:6px 14px;border-radius:999px;font:700 12px/1 -apple-system,Segoe UI,Roboto,sans-serif;letter-spacing:.03em;color:#04281c;background:linear-gradient(180deg,#4ade9f,var(--tmf-accent-d));transition:filter .15s}
+.tmf-report-count{background:var(--tmf-accent-d);color:#fff;border-radius:999px;padding:2px 6px;font-size:11px}
+.tmf-fillall-btn.torn-btn{all:unset;box-sizing:border-box;cursor:pointer;display:block;width:100%;text-align:center;padding:9px 14px;border-radius:8px;font:700 13px/1 -apple-system,Segoe UI,Roboto,sans-serif;letter-spacing:.03em;color:#04281c;background:linear-gradient(180deg,#4ade9f,var(--tmf-accent-d));transition:filter .15s}
 .tmf-fillall-btn.torn-btn:hover{filter:brightness(1.12)}
 .tmf-fillall-bar--active .tmf-fillall-btn.torn-btn{color:#fff;background:linear-gradient(180deg,#f87171,#b91c1c)}
-.tmf-fillall-bar--min{padding:5px 7px;gap:4px}
-.tmf-fillall-bar--min .tmf-fillall-btn,.tmf-fillall-bar--min .tmf-fillall-cog,.tmf-fillall-bar--min .tmf-fillall-report,.tmf-fillall-bar--min .tmf-fillall-dollar{display:none}
-.tmf-fillall-bar--min .tmf-fillall-grip{font-size:16px}
+.tmf-quick-toggle{cursor:pointer;display:flex;align-items:center;gap:8px;height:30px;padding:0 10px;border-radius:8px;background:rgba(255,255,255,.08);color:#dfe3ea;font:600 12px/1 -apple-system,Segoe UI,Roboto,sans-serif;user-select:none;-webkit-user-select:none}
+.tmf-quick-toggle:hover{background:rgba(255,255,255,.2);color:#fff}
+.tmf-quick-toggle .tmf-quick-label{flex:1 1 auto}
+.tmf-quick-toggle .tmf-quick-arrow{font-size:10px;color:#9aa1b0;transition:transform .2s}
+.tmf-quick--open .tmf-quick-arrow{transform:rotate(180deg)}
+.tmf-quick-panel{display:none;flex-direction:column;gap:5px;padding:8px;border-radius:8px;background:rgba(255,255,255,.04);border:1px solid var(--tmf-line)}
+.tmf-quick--open .tmf-quick-panel{display:flex}
+.tmf-quick-panel label{color:#9aa1b0;font:600 10px/1 -apple-system,Segoe UI,Roboto,sans-serif;letter-spacing:.06em;text-transform:uppercase;margin-top:3px}
+.tmf-quick-panel input[type=text],.tmf-quick-panel select{width:100%;box-sizing:border-box;padding:5px 7px;border-radius:6px;border:1px solid var(--tmf-line);background:#0d0f13;color:var(--tmf-text);font:12px ui-monospace,Menlo,Consolas,monospace}
+.tmf-quick-panel input[type=text]:focus,.tmf-quick-panel select:focus{outline:0;border-color:var(--tmf-accent)}
+.tmf-quick-panel input.tmf-quick-bad{border-color:var(--tmf-bad)}
+.tmf-quick-row{display:flex;gap:5px}
+.tmf-quick-row>input,.tmf-quick-row>select{flex:1 1 auto;min-width:0}
+.tmf-quick-btn{cursor:pointer;flex:0 0 auto;padding:0 9px;border-radius:6px;border:1px solid var(--tmf-line);background:rgba(255,255,255,.08);color:#dfe3ea;font:600 11px/1 -apple-system,Segoe UI,Roboto,sans-serif}
+.tmf-quick-btn:hover:not(:disabled){background:rgba(255,255,255,.2);color:#fff}
+.tmf-quick-btn:disabled{opacity:.35;cursor:default}
+.tmf-quick-btn.tmf-quick-save{background:var(--tmf-accent-d);border-color:var(--tmf-accent-d);color:#fff}
+.tmf-quick-note{font:11px/1.3 -apple-system,Segoe UI,Roboto,sans-serif;color:var(--tmf-dim);min-height:14px}
+.tmf-quick-note.tmf-bad{color:var(--tmf-bad)}
+.tmf-quick-note.tmf-ok{color:var(--tmf-accent)}
+.tmf-fillall-bar--min{width:auto}
+.tmf-fillall-bar--min .tmf-fillall-body{display:none}
 .tmf-autofill-dot{display:none;width:9px;height:9px;border-radius:50%;background:var(--tmf-accent);box-shadow:0 0 6px var(--tmf-accent);animation:tmfPulse 1s ease-in-out infinite}
 .tmf-fillall-bar--active .tmf-autofill-dot{display:inline-block}
 .tmf-fillall-bar--active{border-color:var(--tmf-accent);box-shadow:0 0 14px 2px rgba(52,211,153,.45)}
@@ -207,6 +248,8 @@
 .tmf-modal-section>h4{margin:0 0 8px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--tmf-dim);font-weight:700}
 .tmf-modal label{display:block;margin:10px 0 4px;font-weight:600;color:#cfd3dc}
 .tmf-modal input[type=text],.tmf-modal input[type=password]{width:100%;box-sizing:border-box;padding:8px 10px;border-radius:7px;border:1px solid var(--tmf-line);background:#0d0f13;color:var(--tmf-text);font:13px ui-monospace,Menlo,Consolas,monospace;transition:border-color .15s,box-shadow .15s}
+.tmf-modal select.tmf-modal-round,.tmf-modal select.tmf-modal-round-dir{width:100%;box-sizing:border-box;padding:8px 10px;border-radius:7px;border:1px solid var(--tmf-line);background:#0d0f13;color:var(--tmf-text);font:13px ui-monospace,Menlo,Consolas,monospace}
+.tmf-modal select.tmf-modal-round:focus,.tmf-modal select.tmf-modal-round-dir:focus{outline:0;border-color:var(--tmf-accent);box-shadow:0 0 0 3px rgba(52,211,153,.18)}
 .tmf-modal input[type=text]:focus,.tmf-modal input[type=password]:focus{outline:0;border-color:var(--tmf-accent);box-shadow:0 0 0 3px rgba(52,211,153,.18)}
 .tmf-chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}
 .tmf-chip{cursor:pointer;border:1px solid var(--tmf-line);background:var(--tmf-bg2);color:#cfd3dc;border-radius:999px;padding:4px 10px;font-size:11px;line-height:1.3;transition:border-color .15s,background .15s}
@@ -276,6 +319,23 @@
     // Write every line for a player, not a developer: one short sentence, plain words,
     // what changed for them rather than what changed in the code.
     const CHANGELOG = [
+        {
+            version: "1.6.6",
+            date: "2026-10-20",
+            changes: [
+                'The Fill All bar is now a small drop-down panel. Click its title to open or close it. Open, it lists Fill All, Session receipt, Settings and (on the Bazaar) Dollar bazaar as labelled rows. You can still drag it by the title.',
+                'New "Quick changes" section in the panel: switch your price formula, quantity and rounding right there, with presets, without opening Settings. It saves as you change it.',
+                'You can save your own presets: type a name and press Save in Quick changes. A custom preset remembers the formula, quantity and rounding together. Item Market and Bazaar keep their own lists.',
+                'New "Round direction" setting: round to the nearest, always down (so you undercut), or always up (so you never list below the number).'
+            ]
+        },
+        {
+            version: "1.6.5",
+            date: "2026-10-20",
+            changes: [
+                'New "Round listed price" setting: round every listing to the nearest $10, $100 or $1,000, or leave it exact. Item Market and Bazaar each keep their own choice.'
+            ]
+        },
         {
             version: "1.6.4",
             date: "2026-10-20",
@@ -1418,8 +1478,15 @@
 
     // A listed price is never allowed to reach zero or go negative: "-1" on a $1 item would
     // otherwise fill 0, which Torn rejects.
+    // The price is rounded to the chosen step last, after the discount, so the rounding is the
+    // only thing that moves the final number.
     function clampPrice(value){
-        return Math.max(1, Math.round(value));
+        let price = Math.round(value);
+        if (roundingStep > 0){
+            let rounder = roundingDir === 'down' ? Math.floor : (roundingDir === 'up' ? Math.ceil : Math.round);
+            price = rounder(price / roundingStep) * roundingStep;
+        }
+        return Math.max(1, price);
     }
 
     // The number a formula's discount is applied to, and what to call it in the popup.
@@ -2020,6 +2087,16 @@
         saveFillAllState();
     }
 
+    // Fold the panel down to its header, keeping it where it is.
+    function collapseFillAllBar(bar){
+        bar.classList.add('tmf-fillall-bar--min');
+        let r = bar.getBoundingClientRect();
+        let clamped = clampBarLeftTop(bar, r.left, r.top);
+        setBarLeftTop(bar, clamped.left, clamped.top);
+        fillAllState = { left: clamped.left, top: clamped.top, minimised: true, edge: null };
+        saveFillAllState();
+    }
+
     // End of a drag gesture: snap + minimise when dropped near an edge, otherwise stay expanded.
     function finishFillAllDrag(bar){
         bar.classList.remove('tmf-fillall-bar--dragging');
@@ -2046,7 +2123,12 @@
         let startX = 0, startY = 0, baseLeft = 0, baseTop = 0;
         let candidate = false, dragging = false, suppressClick = false;
 
-        function begin(clientX, clientY){
+        let startTarget = null;
+        function begin(clientX, clientY, target){
+            if (target != null && target.closest && target.closest('input:not([type=button]),select')) {
+                return;
+            }
+            startTarget = target || null;
             candidate = true;
             dragging = false;
             let r = bar.getBoundingClientRect();
@@ -2084,14 +2166,16 @@
                 setTimeout(function(){ suppressClick = false; }, 50);
             } else if (bar.classList.contains('tmf-fillall-bar--min')) {
                 expandFillAllBar(bar);
+            } else if (startTarget != null && startTarget.closest && startTarget.closest('.tmf-fillall-head')) {
+                collapseFillAllBar(bar);
             }
         }
 
-        bar.addEventListener('mousedown', function(e){ begin(e.clientX, e.clientY); });
+        bar.addEventListener('mousedown', function(e){ begin(e.clientX, e.clientY, e.target); });
         document.addEventListener('mousemove', function(e){ if (candidate) { move(e.clientX, e.clientY); } });
         document.addEventListener('mouseup', end);
 
-        bar.addEventListener('touchstart', function(e){ let t = e.touches[0]; begin(t.clientX, t.clientY); }, { passive: true });
+        bar.addEventListener('touchstart', function(e){ let t = e.touches[0]; begin(t.clientX, t.clientY, e.target); }, { passive: true });
         document.addEventListener('touchmove', function(e){
             if (!candidate) {
                 return;
@@ -2117,6 +2201,256 @@
         }, true);
     }
 
+    // "Quick changes": the everyday settings (price formula, quantity, rounding) inside the panel,
+    // so they can be changed without opening Settings. Everything here reads and writes the same
+    // profile Settings does, for the page you are on. The preset list is filled in the first time
+    // the section is opened, because it is built from tables defined further down the script.
+    function buildQuickChanges(){
+        const box = document.createElement('div');
+        box.className = 'tmf-quick';
+        box.innerHTML =
+            '<div class="tmf-quick-toggle"><span>&#9889;</span><span class="tmf-quick-label">Quick changes</span><span class="tmf-quick-arrow">&#9660;</span></div>' +
+            '<div class="tmf-quick-panel">' +
+                '<label>Preset</label><div class="tmf-quick-row"><select class="tmf-quick-preset"></select><button type="button" class="tmf-quick-btn tmf-quick-del" title="Delete the selected custom preset" disabled>&#10005;</button></div>' +
+                '<label>Price formula</label><input type="text" class="tmf-quick-formula" spellcheck="false" autocomplete="off">' +
+                '<div class="tmf-quick-note"></div>' +
+                '<label>Quantity</label>' +
+                '<select class="tmf-quick-qty">' +
+                    '<option value="max">All</option><option value="max-1">Keep 1</option><option value="1">Just 1</option><option value="skip">Never list</option>' +
+                '</select>' +
+                '<label>Round price</label>' +
+                '<select class="tmf-quick-round"><option value="0">Exact</option><option value="10">To $10</option><option value="100">To $100</option><option value="1000">To $1,000</option></select>' +
+                '<label>Round direction</label>' +
+                '<select class="tmf-quick-dir"><option value="nearest">Nearest</option><option value="down">Always down</option><option value="up">Always up</option></select>' +
+                '<label>Save these as a preset</label>' +
+                '<div class="tmf-quick-row"><input type="text" class="tmf-quick-name" placeholder="Preset name" maxlength="24" spellcheck="false" autocomplete="off"><button type="button" class="tmf-quick-btn tmf-quick-save">Save</button></div>' +
+            '</div>';
+        const formula = box.querySelector('.tmf-quick-formula');
+        const note = box.querySelector('.tmf-quick-note');
+        box.querySelector('.tmf-quick-toggle').addEventListener('click', function(event){
+            event.stopPropagation();
+            box.classList.toggle('tmf-quick--open');
+            if (box.classList.contains('tmf-quick--open')) {
+                refreshQuickChanges();
+            }
+        });
+        // A click inside the panel must not count as a click on the bar's header.
+        box.querySelector('.tmf-quick-panel').addEventListener('click', function(event){ event.stopPropagation(); });
+        formula.addEventListener('input', function(){
+            const problem = settingProblem(formula.value);
+            formula.classList.toggle('tmf-quick-bad', problem != null);
+            note.className = 'tmf-quick-note ' + (problem != null ? 'tmf-bad' : 'tmf-ok');
+            note.textContent = problem != null ? problem : describeSetting(formula.value);
+        });
+        const presetSelect = box.querySelector('.tmf-quick-preset');
+        const deleteButton = box.querySelector('.tmf-quick-del');
+        // Editing any control by hand means the shown preset no longer describes the settings.
+        function manualChange(){
+            presetSelect.value = '';
+            deleteButton.disabled = true;
+            applyQuickChanges();
+        }
+        formula.addEventListener('change', manualChange);
+        formula.addEventListener('keydown', function(event){
+            event.stopPropagation();
+            if (event.key === 'Enter') {
+                formula.blur();
+            }
+        });
+        presetSelect.addEventListener('change', function(event){
+            const value = event.target.value;
+            deleteButton.disabled = value.indexOf('my:') !== 0;
+            if (value === '') {
+                return;
+            }
+            if (value.indexOf('my:') === 0) {
+                const preset = readCustomPresets()[parseInt(value.substring(3), 10)];
+                if (preset != null) {
+                    formula.value = preset.formula;
+                    setQuickQuantity(preset.qty);
+                    box.querySelector('.tmf-quick-round').value = String(preset.round);
+                    box.querySelector('.tmf-quick-dir').value = preset.dir;
+                    formula.dispatchEvent(new Event('input'));
+                    applyQuickChanges();
+                }
+                return;
+            }
+            // A built-in preset only sets the formula, as it always has.
+            formula.value = value;
+            formula.dispatchEvent(new Event('input'));
+            applyQuickChanges();
+            event.target.value = '';
+        });
+        ['.tmf-quick-qty', '.tmf-quick-round', '.tmf-quick-dir'].forEach(function(selector){
+            box.querySelector(selector).addEventListener('change', manualChange);
+        });
+        box.querySelector('.tmf-quick-name').addEventListener('keydown', function(event){
+            event.stopPropagation();
+            if (event.key === 'Enter') {
+                saveQuickPreset();
+            }
+        });
+        box.querySelector('.tmf-quick-save').addEventListener('click', saveQuickPreset);
+        deleteButton.addEventListener('click', function(){
+            const index = parseInt(presetSelect.value.substring(3), 10);
+            const list = readCustomPresets();
+            if (presetSelect.value.indexOf('my:') !== 0 || list[index] == null) {
+                return;
+            }
+            const removed = list.splice(index, 1)[0];
+            writeCustomPresets(list);
+            refreshQuickChanges();
+            quickNote('Deleted preset "' + removed.name + '".', true);
+        });
+        return box;
+    }
+
+    // Custom presets: a name plus the four quick settings, kept per page like everything else.
+    const CUSTOM_PRESETS_KEY = isBazaarPage ? "freaky-market-helper-bazaar-custom-presets" : "freaky-market-helper-custom-presets";
+    function readCustomPresets(){
+        try {
+            const parsed = JSON.parse(localStorage.getItem(CUSTOM_PRESETS_KEY) ?? '[]');
+            return Array.isArray(parsed) ? parsed.filter(function(item){
+                return item != null && typeof item.name === 'string' && typeof item.formula === 'string';
+            }).map(function(item){
+                return {
+                    name: item.name,
+                    formula: item.formula,
+                    qty: typeof item.qty === 'string' && item.qty !== '' ? item.qty : 'max',
+                    round: ROUNDING_STEPS.indexOf(Number(item.round)) !== -1 ? Number(item.round) : 0,
+                    dir: ROUNDING_DIRS.indexOf(item.dir) !== -1 ? item.dir : 'nearest'
+                };
+            }) : [];
+        } catch (error) {
+            return [];
+        }
+    }
+
+    function writeCustomPresets(list){
+        try {
+            localStorage.setItem(CUSTOM_PRESETS_KEY, JSON.stringify(list));
+        } catch (error) {
+            console.warn('[FreakyMarketHelper] Could not store presets:', error);
+        }
+    }
+
+    function quickNote(message, ok){
+        const note = document.querySelector('.tmf-quick-note');
+        if (note != null) {
+            note.className = 'tmf-quick-note ' + (ok ? 'tmf-ok' : 'tmf-bad');
+            note.textContent = message;
+        }
+    }
+
+    // Quantity can be a value the dropdown does not list (a number, max-3): show it as "Custom".
+    function setQuickQuantity(value){
+        const qty = document.querySelector('.tmf-quick-qty');
+        if (qty == null) {
+            return;
+        }
+        Array.from(qty.querySelectorAll('.tmf-quick-custom')).forEach(function(option){ option.remove(); });
+        if (!Array.from(qty.options).some(function(option){ return option.value === value; })) {
+            const custom = document.createElement('option');
+            custom.className = 'tmf-quick-custom';
+            custom.value = value;
+            custom.textContent = 'Custom: ' + value;
+            qty.appendChild(custom);
+        }
+        qty.value = value;
+    }
+
+    function saveQuickPreset(){
+        const box = document.querySelector('.tmf-quick');
+        if (box == null) {
+            return;
+        }
+        const nameInput = box.querySelector('.tmf-quick-name');
+        const name = nameInput.value.trim();
+        const formula = box.querySelector('.tmf-quick-formula').value.trim();
+        if (name === '') {
+            quickNote('Type a name for the preset first.', false);
+            nameInput.focus();
+            return;
+        }
+        const problem = settingProblem(formula);
+        if (problem != null || formula === '') {
+            quickNote(problem != null ? problem : 'Enter a price formula to save.', false);
+            return;
+        }
+        const preset = {
+            name: name,
+            formula: formula,
+            qty: box.querySelector('.tmf-quick-qty').value,
+            round: Number(box.querySelector('.tmf-quick-round').value),
+            dir: box.querySelector('.tmf-quick-dir').value
+        };
+        const list = readCustomPresets();
+        const existing = list.findIndex(function(item){ return item.name.toLowerCase() === name.toLowerCase(); });
+        if (existing !== -1) {
+            list[existing] = preset;
+        } else {
+            list.push(preset);
+        }
+        writeCustomPresets(list);
+        nameInput.value = '';
+        refreshQuickChanges();
+        const select = box.querySelector('.tmf-quick-preset');
+        select.value = 'my:' + (existing !== -1 ? existing : list.length - 1);
+        box.querySelector('.tmf-quick-del').disabled = false;
+        quickNote((existing !== -1 ? 'Updated' : 'Saved') + ' preset "' + name + '".', true);
+    }
+
+    // Show the saved settings of this page in the quick panel.
+    function refreshQuickChanges(){
+        const box = document.querySelector('.tmf-quick');
+        if (box == null) {
+            return;
+        }
+        try {
+            const profile = loadProfile(PAGE_PROFILE);
+            const presets = isBazaarPage ? BAZAAR_PRESETS : PRICE_PRESETS;
+            const mine = readCustomPresets();
+            box.querySelector('.tmf-quick-preset').innerHTML = '<option value="">Choose a preset…</option>' +
+                (mine.length > 0 ? '<optgroup label="My presets">' + mine.map(function(preset, index){
+                    return '<option value="my:' + index + '">' + escapeHtml(preset.name) + '</option>';
+                }).join('') + '</optgroup>' : '') +
+                '<optgroup label="Built-in">' + presets.map(function(preset){
+                    return '<option value="' + escapeHtml(preset.formula) + '">' + escapeHtml(preset.label) + '</option>';
+                }).join('') + '</optgroup>';
+            box.querySelector('.tmf-quick-del').disabled = true;
+            const formula = box.querySelector('.tmf-quick-formula');
+            formula.value = profile.delta;
+            formula.dispatchEvent(new Event('input'));
+            setQuickQuantity(profile.qty);
+            box.querySelector('.tmf-quick-round').value = String(profile.round ?? 0);
+            box.querySelector('.tmf-quick-dir').value = roundingDir;
+        } catch (error) {
+            console.warn('[FreakyMarketHelper] Quick changes could not load yet:', error);
+        }
+    }
+
+    // Save whatever the quick panel shows. A formula that does not parse is left unsaved and
+    // marked, so a typo can never reach the fill buttons.
+    function applyQuickChanges(){
+        const box = document.querySelector('.tmf-quick');
+        if (box == null) {
+            return;
+        }
+        const formula = box.querySelector('.tmf-quick-formula').value;
+        if (settingProblem(formula) != null) {
+            return;
+        }
+        const draft = profileToDraft(loadProfile(PAGE_PROFILE));
+        draft.delta = formula;
+        draft.qty = box.querySelector('.tmf-quick-qty').value;
+        draft.round = Number(box.querySelector('.tmf-quick-round').value);
+        draft.roundDir = box.querySelector('.tmf-quick-dir').value;
+        saveProfileDraft(PAGE_PROFILE, draft);
+        const note = box.querySelector('.tmf-quick-note');
+        note.className = 'tmf-quick-note tmf-ok';
+        note.textContent = 'Saved. ' + describeSetting(draft.delta.trim() === '' ? PROFILE_DEFAULT_DELTA[PAGE_PROFILE] : draft.delta);
+    }
+
     function ensureFillAllUI(){
         let bar = document.querySelector(".tmf-fillall-bar");
         if (bar == null) {
@@ -2126,11 +2460,16 @@
             grip.className = 'tmf-fillall-grip';
             grip.textContent = '⠿';
             grip.title = 'Drag to move; drop near an edge to minimise';
+            const head = document.createElement('div');
+            head.className = 'tmf-fillall-head';
+            head.title = 'Click to open or close';
+            const body = document.createElement('div');
+            body.className = 'tmf-fillall-body';
             // Second way into the settings, next to the always-visible Fill All button —
             // the press-and-hold on a row's fill button remains available too.
             const cog = document.createElement('span');
             cog.className = 'tmf-fillall-cog';
-            cog.textContent = '⚙';
+            cog.innerHTML = '<span class="tmf-cog-icon">⚙</span><span class="tmf-cog-label">Settings</span>';
             cog.title = 'Open Freaky Market Helper settings';
             const btn = document.createElement('input');
             btn.type = 'button';
@@ -2140,11 +2479,11 @@
             const report = document.createElement('span');
             report.className = 'tmf-fillall-report';
             report.title = 'Session receipt: what you have listed and what it is worth';
-            report.innerHTML = '<span class="tmf-report-icon">&#129534;</span><span class="tmf-report-count"></span>';
+            report.innerHTML = '<span class="tmf-report-icon">&#129534;</span><span class="tmf-report-label">Session receipt</span><span class="tmf-report-count"></span>';
             if (isBazaarPage){
                 const dollar = document.createElement('span');
                 dollar.className = 'tmf-fillall-dollar';
-                dollar.textContent = '$1';
+                dollar.textContent = '$1 Dollar bazaar';
                 dollar.title = 'Dollar bazaar: list everything for $1';
                 dollar.classList.toggle('tmf-fillall-dollar--on', dollarBazaar);
                 dollar.addEventListener('click', function(event){
@@ -2158,10 +2497,19 @@
                     dollar.classList.toggle('tmf-fillall-dollar--on', dollarBazaar);
                     showToast(dollarBazaar ? 'Dollar bazaar ON: fills list at $1.' : 'Dollar bazaar off: normal pricing.');
                 });
-                bar.append(grip, cog, report, dollar, btn, dot);
+                body.append(btn, report, cog, dollar);
             } else {
-                bar.append(grip, cog, report, btn, dot);
+                body.append(btn, report, cog);
             }
+            body.append(buildQuickChanges());
+            const title = document.createElement('span');
+            title.className = 'tmf-fillall-title';
+            title.textContent = 'Freaky Market Helper';
+            const chev = document.createElement('span');
+            chev.className = 'tmf-fillall-chev';
+            chev.textContent = '▼';
+            head.append(grip, title, dot, chev);
+            bar.append(head, body);
             report.addEventListener('click', function(event){
                 event.stopPropagation();
                 openReportModal();
@@ -3042,6 +3390,19 @@
                         '<span class="tmf-chip" data-qty="1">Just 1</span>' +
                         '<span class="tmf-chip" data-qty="skip">Never</span>' +
                     '</div>' +
+                    '<label>Round listed price</label>' +
+                    '<select class="tmf-modal-round">' +
+                        '<option value="0">Exact (no rounding)</option>' +
+                        '<option value="10">To $10</option>' +
+                        '<option value="100">To $100</option>' +
+                        '<option value="1000">To $1,000</option>' +
+                    '</select>' +
+                    '<label>Round direction</label>' +
+                    '<select class="tmf-modal-round-dir">' +
+                        '<option value="nearest">Nearest</option>' +
+                        '<option value="down">Always down (undercut)</option>' +
+                        '<option value="up">Always up (never below)</option>' +
+                    '</select>' +
                 '</div>' +
                 '<div class="tmf-modal-section">' +
                     '<h4>Torn API</h4>' +
@@ -3181,14 +3542,14 @@
     function loadProfile(name){
         let delta = name === 'market' ? priceDeltaRaw : bazaarDeltaRaw;
         if (name === PAGE_PROFILE){
-            return { delta: delta, qty: quantityModeRaw, catDeltas: name === 'market' ? categoryDeltas : {}, catQty: categoryQuantities };
+            return { delta: delta, qty: quantityModeRaw, round: roundingStep, roundDir: roundingDir, catDeltas: name === 'market' ? categoryDeltas : {}, catQty: categoryQuantities };
         }
         if (name === 'market'){
-            return { delta: delta, qty: localStorage.getItem(QUANTITY_KEY_MARKET) ?? 'max',
+            return { delta: delta, qty: localStorage.getItem(QUANTITY_KEY_MARKET) ?? 'max', round: readRounding(ROUNDING_KEY_MARKET), roundDir: readRoundingDir(ROUNDING_DIR_KEY_MARKET),
                      catDeltas: readStoredMap(categoryDeltasKey), catQty: readStoredMap(CATEGORY_QUANTITIES_KEY_MARKET) };
         }
         return { delta: delta, qty: localStorage.getItem(QUANTITY_KEY_BAZAAR) ?? localStorage.getItem(QUANTITY_KEY_MARKET) ?? 'max',
-                 catDeltas: {}, catQty: readStoredMap(CATEGORY_QUANTITIES_KEY_BAZAAR) };
+                 round: readRounding(ROUNDING_KEY_BAZAAR), roundDir: readRoundingDir(ROUNDING_DIR_KEY_BAZAAR), catDeltas: {}, catQty: readStoredMap(CATEGORY_QUANTITIES_KEY_BAZAAR) };
     }
 
     // The editable shape: one row per category named by either map.
@@ -3197,6 +3558,8 @@
         return {
             delta: profile.delta,
             qty: profile.qty,
+            round: profile.round,
+            roundDir: profile.roundDir,
             rows: names.map(function(name){ return { name: name, formula: profile.catDeltas[name] ?? '', qty: profile.catQty[name] ?? '' }; })
         };
     }
@@ -3204,6 +3567,14 @@
     function saveProfileDraft(name, draft){
         let delta = draft.delta.trim() === '' ? PROFILE_DEFAULT_DELTA[name] : draft.delta.trim();
         let qty = draft.qty.trim() === '' ? 'max' : draft.qty.trim();
+        let round = ROUNDING_STEPS.indexOf(Number(draft.round)) !== -1 ? Number(draft.round) : 0;
+        localStorage.setItem(name === 'market' ? ROUNDING_KEY_MARKET : ROUNDING_KEY_BAZAAR, String(round));
+        let roundDir = ROUNDING_DIRS.indexOf(draft.roundDir) !== -1 ? draft.roundDir : 'nearest';
+        localStorage.setItem(name === 'market' ? ROUNDING_DIR_KEY_MARKET : ROUNDING_DIR_KEY_BAZAAR, roundDir);
+        if (name === PAGE_PROFILE){
+            roundingStep = round;
+            roundingDir = roundDir;
+        }
         let catDeltas = {};
         let catQty = {};
         draft.rows.forEach(function(row){
@@ -3244,6 +3615,8 @@
         return {
             delta: overlay.querySelector('.tmf-modal-delta').value,
             qty: overlay.querySelector('.tmf-modal-qty').value,
+            round: Number(overlay.querySelector('.tmf-modal-round').value),
+            roundDir: overlay.querySelector('.tmf-modal-round-dir').value,
             rows: Array.from(overlay.querySelectorAll('.tmf-modal-cat-row')).map(function(row){
                 return {
                     name: row.querySelector('.tmf-modal-cat-name').value,
@@ -3272,6 +3645,8 @@
         overlay.querySelector('.tmf-modal-delta').placeholder = PROFILE_DEFAULT_DELTA[name];
         overlay.querySelector('.tmf-modal-delta').value = draft.delta;
         overlay.querySelector('.tmf-modal-qty').value = draft.qty;
+        overlay.querySelector('.tmf-modal-round').value = String(draft.round ?? 0);
+        overlay.querySelector('.tmf-modal-round-dir').value = draft.roundDir ?? 'nearest';
         const list = overlay.querySelector('.tmf-modal-cats');
         list.innerHTML = '';
         draft.rows.forEach(function(row){ addCategoryRow(row.name, row.formula, row.qty); });
@@ -3522,6 +3897,7 @@
             localStorage.removeItem("freaky-market-helper-apikey");
         }
         closeSettingsModal();
+        refreshQuickChanges();
     }
 
     function performOperation(number, operation) {
