@@ -9,8 +9,9 @@ A Tampermonkey / Violentmonkey userscript for [Torn](https://www.torn.com) that 
 
 ## Install
 
-Install from [Greasy Fork](https://greasyfork.org/en/scripts/601273-freaky-market-helper) or open the raw file and let your userscript manager install it:
-`freaky-market-helper.user.js`
+Install from [Greasy Fork](https://greasyfork.org/en/scripts/601273-freaky-market-helper), or open the raw file and let your userscript manager install it:
+
+https://raw.githubusercontent.com/FreakSatsuma/freaky-market-helper/main/freaky-market-helper.user.js
 
 ## Credits
 
