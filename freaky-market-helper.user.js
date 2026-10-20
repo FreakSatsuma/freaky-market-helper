@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Freaky Market Helper
 // @namespace    https://www.torn.com/profiles.php?XID=4313844
-// @version      1.6.2
+// @version      1.6.3
 // @description  Fill your Torn Item Market and Bazaar listings in one click. Prices from the cheapest listing, average price, market value or live bazaars (weav3r.dev), with your own formulas and min/max ranges, quantity rules, favourites with Fill All, a session receipt and a dollar bazaar mode. Settings are kept separately for the Item Market and the Bazaar.
 // @author       FreakSatsuma [4313844]
 // @license      MIT License
@@ -68,7 +68,7 @@
     }
 
     // Keep in sync with @version above — it keys the "What's new" popup.
-    const SCRIPT_VERSION = "1.6.2";
+    const SCRIPT_VERSION = "1.6.3";
 
     const itemUrl = "https://api.torn.com/torn/{itemId}?selections=items&key={apiKey}&comment=MarketFiller";
     const marketUrlV2 = "https://api.torn.com/v2/market?id={itemId}&selections=itemMarket&key={apiKey}&comment=MarketFiller";
@@ -151,6 +151,8 @@
 .fmh-button .fmh-btn{all:unset;box-sizing:border-box;cursor:pointer;min-width:46px;padding:0 10px;height:100%;min-height:26px;display:flex;align-items:center;justify-content:center;font:600 12px/1 -apple-system,Segoe UI,Roboto,sans-serif;letter-spacing:.02em;color:#04281c;background:linear-gradient(180deg,#4ade9f,var(--tmf-accent-d));border-radius:6px 0 0 6px;transition:filter .15s,transform .05s}
 .fmh-button .fmh-btn:hover{filter:brightness(1.12)}
 .fmh-button .fmh-btn:active{transform:translateY(1px)}
+.fmh-button.fmh-inline{display:inline-flex!important;vertical-align:middle;align-items:center;margin-left:8px;height:22px;width:auto!important;position:static}
+.fmh-button.fmh-inline .fmh-btn{border-radius:6px;min-height:22px;height:22px;padding:0 10px}
 .fmh-button.fmh-update .fmh-btn{color:#fff;background:linear-gradient(180deg,#60a5fa,#2563eb)}
 .fmh-button[data-action-flag=clear] .fmh-btn{color:var(--tmf-text);background:linear-gradient(180deg,#4b5160,#363b47)}
 .tmf-fav{cursor:pointer;display:inline-flex;align-items:center;justify-content:center;width:22px;font-size:17px;line-height:1;color:#7b8190;align-self:center;margin-right:2px;user-select:none;-webkit-user-select:none;transition:transform .12s,color .12s}
@@ -274,6 +276,14 @@
     // Write every line for a player, not a developer: one short sentence, plain words,
     // what changed for them rather than what changed in the code.
     const CHANGELOG = [
+        {
+            version: "1.6.3",
+            date: "2026-10-20",
+            changes: [
+                'Removed the message that popped up after every fill ("$12,939 = 2%[market] on market value..."). Errors still show a message.',
+                'On the Bazaar Manage page the Update button now sits right after each item name, so it no longer crowds the price box off the edge of the screen.'
+            ]
+        },
         {
             version: "1.6.2",
             date: "2026-10-20",
@@ -532,19 +542,25 @@
         if (wrapperParent == null){
             return;
         }
-        if (itemPriceElement.querySelector('.fmh-button') != null){
+        let existingButton = wrapperParent.querySelector('.fmh-button');
+        if (existingButton != null){
             // React may reuse this row's DOM for a different item (pagination, tab switches),
             // so the id the button was injected with can go stale.
             refreshRowItemId(wrapperParent);
-            let existing = itemPriceElement.querySelector('.fmh-button');
+            let existing = existingButton;
             setActionFlag(existing, existing.getAttribute('data-action-flag') ?? 'fill');
             return;
         }
         wrapperParent.classList.add('fmh-processed');
         let itemId = getRowItemId(wrapperParent);
+        // Bazaar Manage: the price column is too narrow for a button, so the Update button and the
+        // star sit after the item's name instead.
+        const descHost = (isBazaarPage && currentPage == pages.ViewItems) ? wrapperParent.querySelector('[class*=desc___]') : null;
         const span = document.createElement('span');
-        span.className = 'fmh-button input-money-symbol';
-        span.style.position = "relative";
+        span.className = descHost != null ? 'fmh-button fmh-inline' : 'fmh-button input-money-symbol';
+        if (descHost == null){
+            span.style.position = "relative";
+        }
         span.setAttribute('data-action-flag', 'fill');
         span.addEventListener('click', async function(e) {
             if (holdFired){
@@ -574,7 +590,7 @@
             wrapperParent.dataset.tmfItemId = itemIdNum;
             // First slot of the row's controls container — left of the anonymous button.
             const infoContainer = findInfoRow(itemPriceElement);
-            const favHost = isBazaarPage ? (moneyGroup.parentElement ?? moneyGroup) : (infoContainer ?? moneyGroup);
+            const favHost = descHost ?? (isBazaarPage ? (moneyGroup.parentElement ?? moneyGroup) : (infoContainer ?? moneyGroup));
             // A re-render can remount the price wrapper while the row (and our star) survives;
             // guard against stacking a second star on re-scan.
             if (favHost.querySelector('.tmf-fav') == null){
@@ -592,7 +608,11 @@
                         enqueueFavouriteRow(wrapperParent);
                     }
                 });
-                favHost.prepend(favBtn);
+                if (descHost != null){
+                    descHost.append(favBtn);
+                } else {
+                    favHost.prepend(favBtn);
+                }
             }
             // Select box (Add Items only): tick it to price and fill the row, untick to clear it.
             if (currentPage == pages.AddItems && favHost.querySelector('.tmf-select') == null){
@@ -607,9 +627,23 @@
                 });
                 favHost.prepend(selectBox);
             }
-            moneyGroup.prepend(span);
+            placeFillButton(span, descHost, moneyGroup);
             if (autoFillActive){
                 enqueueFavouriteRow(wrapperParent);
+            }
+        } else {
+            placeFillButton(span, descHost, moneyGroup);
+        }
+    }
+
+    // Next to the item name (before the star) when there is a name cell to use, else inside the price box.
+    function placeFillButton(span, descHost, moneyGroup){
+        if (descHost != null){
+            let star = descHost.querySelector('.tmf-fav');
+            if (star != null){
+                descHost.insertBefore(span, star);
+            } else {
+                descHost.append(span);
             }
         } else {
             moneyGroup.prepend(span);
@@ -1655,7 +1689,11 @@
     // showPopup=false is the auto-fill path: no prices popup, no input changes on
     // API errors. Returns "ok" | "skipped" | "rate-limited" | "invalid-key" | "error".
     async function performFill(target, itemId, showPopup){
-        let priceInputs = target.parentNode.querySelectorAll('input.input-money');
+        // The price boxes: inside the button's own price group, or, when the button sits beside the
+        // item name (bazaar Manage), the ones in its row.
+        let priceGroup = target.closest('.input-money-group');
+        let priceRow = findRowWrapper(target);
+        let priceInputs = (priceGroup ?? priceRow ?? target.parentNode).querySelectorAll('input.input-money');
         let action = target.getAttribute('data-action-flag');
         // Bazaar Manage: the button is an "Update" that re-prices on every click and never flips
         // to Clear.
@@ -1713,14 +1751,6 @@
         }
 
         let price = GetPrice(prices, pricing.formula);
-        if (showPopup && isBazaarPage && dollarBazaar) {
-            showToast('Dollar bazaar: listed at $1 each.');
-        } else if (showPopup) {
-            let fill = describeFill(prices, pricing.formula);
-            if (fill != null) {
-                showToast('$' + formatNumberWithCommas(price) + ' = ' + fill.formula.trim() + ' on ' + fill.label.toLowerCase() + ' $' + formatNumberWithCommas(Math.round(fill.base)) + ' (you receive $' + formatNumberWithCommas(Math.round(price * marketTaxFactor)) + ' after tax)');
-            }
-        }
         if (!isManageUpdate){
             switchActionFlag(target);
         }
