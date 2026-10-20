@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Freaky Market Helper
 // @namespace    https://www.torn.com/profiles.php?XID=4313844
-// @version      1.6.3
+// @version      1.6.4
 // @description  Fill your Torn Item Market and Bazaar listings in one click. Prices from the cheapest listing, average price, market value or live bazaars (weav3r.dev), with your own formulas and min/max ranges, quantity rules, favourites with Fill All, a session receipt and a dollar bazaar mode. Settings are kept separately for the Item Market and the Bazaar.
 // @author       FreakSatsuma [4313844]
 // @license      MIT License
@@ -68,7 +68,7 @@
     }
 
     // Keep in sync with @version above — it keys the "What's new" popup.
-    const SCRIPT_VERSION = "1.6.3";
+    const SCRIPT_VERSION = "1.6.4";
 
     const itemUrl = "https://api.torn.com/torn/{itemId}?selections=items&key={apiKey}&comment=MarketFiller";
     const marketUrlV2 = "https://api.torn.com/v2/market?id={itemId}&selections=itemMarket&key={apiKey}&comment=MarketFiller";
@@ -151,7 +151,7 @@
 .fmh-button .fmh-btn{all:unset;box-sizing:border-box;cursor:pointer;min-width:46px;padding:0 10px;height:100%;min-height:26px;display:flex;align-items:center;justify-content:center;font:600 12px/1 -apple-system,Segoe UI,Roboto,sans-serif;letter-spacing:.02em;color:#04281c;background:linear-gradient(180deg,#4ade9f,var(--tmf-accent-d));border-radius:6px 0 0 6px;transition:filter .15s,transform .05s}
 .fmh-button .fmh-btn:hover{filter:brightness(1.12)}
 .fmh-button .fmh-btn:active{transform:translateY(1px)}
-.fmh-button.fmh-inline{display:inline-flex!important;vertical-align:middle;align-items:center;margin-left:8px;height:22px;width:auto!important;position:static}
+.fmh-button.fmh-inline{display:inline-flex!important;vertical-align:middle;align-items:center;margin:0 6px;height:22px;width:auto!important;position:static}
 .fmh-button.fmh-inline .fmh-btn{border-radius:6px;min-height:22px;height:22px;padding:0 10px}
 .fmh-button.fmh-update .fmh-btn{color:#fff;background:linear-gradient(180deg,#60a5fa,#2563eb)}
 .fmh-button[data-action-flag=clear] .fmh-btn{color:var(--tmf-text);background:linear-gradient(180deg,#4b5160,#363b47)}
@@ -276,6 +276,13 @@
     // Write every line for a player, not a developer: one short sentence, plain words,
     // what changed for them rather than what changed in the code.
     const CHANGELOG = [
+        {
+            version: "1.6.4",
+            date: "2026-10-20",
+            changes: [
+                'On the Bazaar Manage page the Update button now sits in the Details column of each listing. The favourite star stays beside the item name.'
+            ]
+        },
         {
             version: "1.6.3",
             date: "2026-10-20",
@@ -553,12 +560,14 @@
         }
         wrapperParent.classList.add('fmh-processed');
         let itemId = getRowItemId(wrapperParent);
-        // Bazaar Manage: the price column is too narrow for a button, so the Update button and the
-        // star sit after the item's name instead.
-        const descHost = (isBazaarPage && currentPage == pages.ViewItems) ? wrapperParent.querySelector('[class*=desc___]') : null;
+        // Bazaar Manage: the price column is too narrow for a button, so the Update button goes in
+        // the row's Details column (the name cell if there is none) and the star after the name.
+        const manageRow = isBazaarPage && currentPage == pages.ViewItems;
+        const descHost = manageRow ? wrapperParent.querySelector('[class*=desc___]') : null;
+        const detailsHost = manageRow ? (wrapperParent.querySelector('[class*=bonuses___]') ?? descHost) : null;
         const span = document.createElement('span');
-        span.className = descHost != null ? 'fmh-button fmh-inline' : 'fmh-button input-money-symbol';
-        if (descHost == null){
+        span.className = detailsHost != null ? 'fmh-button fmh-inline' : 'fmh-button input-money-symbol';
+        if (detailsHost == null){
             span.style.position = "relative";
         }
         span.setAttribute('data-action-flag', 'fill');
@@ -627,12 +636,12 @@
                 });
                 favHost.prepend(selectBox);
             }
-            placeFillButton(span, descHost, moneyGroup);
+            placeFillButton(span, detailsHost, moneyGroup);
             if (autoFillActive){
                 enqueueFavouriteRow(wrapperParent);
             }
         } else {
-            placeFillButton(span, descHost, moneyGroup);
+            placeFillButton(span, detailsHost, moneyGroup);
         }
     }
 
