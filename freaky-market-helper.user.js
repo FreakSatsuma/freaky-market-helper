@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Freaky Market Helper
 // @namespace    https://www.torn.com/profiles.php?XID=4313844
-// @version      1.6.6
+// @version      1.6.8
 // @description  Fill your Torn Item Market and Bazaar listings in one click. Prices from the cheapest listing, average price, market value or live bazaars (weav3r.dev), with your own formulas and min/max ranges, quantity rules, favourites with Fill All, a session receipt and a dollar bazaar mode. Settings are kept separately for the Item Market and the Bazaar.
 // @author       FreakSatsuma [4313844]
 // @license      MIT License
@@ -68,7 +68,7 @@
     }
 
     // Keep in sync with @version above — it keys the "What's new" popup.
-    const SCRIPT_VERSION = "1.6.6";
+    const SCRIPT_VERSION = "1.6.8";
 
     const itemUrl = "https://api.torn.com/torn/{itemId}?selections=items&key={apiKey}&comment=MarketFiller";
     const marketUrlV2 = "https://api.torn.com/v2/market?id={itemId}&selections=itemMarket&key={apiKey}&comment=MarketFiller";
@@ -178,7 +178,13 @@
 .tmf-fav:hover{transform:scale(1.2);color:#aab}
 .tmf-fav.tmf-fav--on{color:gold;text-shadow:0 0 6px rgba(255,215,0,.55)}
 .tmf-fav.tmf-fav--off{color:var(--tmf-bad);text-shadow:none}
-.tmf-select{cursor:pointer;flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;width:20px;height:20px;margin:0 6px 0 2px;align-self:center;border:2px solid #7b8190;border-radius:5px;background:transparent;color:transparent;font-size:13px;font-weight:700;line-height:1;user-select:none;-webkit-user-select:none;transition:background .12s,border-color .12s,color .12s}
+.tmf-select{cursor:pointer;flex:0 0 auto;display:inline-flex;vertical-align:middle;align-items:center;justify-content:center;box-sizing:border-box;width:20px;height:20px;margin:0 6px 0 2px;align-self:center;border:2px solid #7b8190;border-radius:5px;background:transparent;color:transparent;font-size:13px;font-weight:700;line-height:1;user-select:none;-webkit-user-select:none;transition:background .12s,border-color .12s,color .12s}
+.tmf-bz-details>.tmf-select{margin:0 4px 0 14px}
+.tmf-bz-details>.fmh-inline{margin:0 0 0 6px}
+.tmf-bz-controls{display:flex;flex:0 0 100%;width:100%;align-items:center;gap:4px;margin-top:5px}
+.tmf-bz-controls .fmh-inline{margin:0}
+.tmf-bz-controls .tmf-select{margin:0 4px 0 0}
+.tmf-bz-row .name-wrap:has(.tmf-bz-controls){flex-wrap:wrap}
 .tmf-select::after{content:"\\2713"}
 .tmf-select:hover{border-color:var(--tmf-accent)}
 .tmf-select.tmf-select--on{background:var(--tmf-accent-d);border-color:var(--tmf-accent);color:#fff}
@@ -223,6 +229,10 @@
 .tmf-quick-note{font:11px/1.3 -apple-system,Segoe UI,Roboto,sans-serif;color:var(--tmf-dim);min-height:14px}
 .tmf-quick-note.tmf-bad{color:var(--tmf-bad)}
 .tmf-quick-note.tmf-ok{color:var(--tmf-accent)}
+.fmh-button.tmf-npc .fmh-btn{color:#2a1d00!important;background:linear-gradient(180deg,#fbbf24,#d97706)!important}
+input.tmf-npc{outline:2px solid #fbbf24!important;outline-offset:-2px}
+.tmf-quick-panel label.tmf-quick-check{display:flex;align-items:center;gap:7px;margin-top:6px;color:#dfe3ea;font:600 12px/1.2 -apple-system,Segoe UI,Roboto,sans-serif;letter-spacing:0;text-transform:none;cursor:pointer}
+.tmf-quick-panel label.tmf-quick-check input{width:auto;margin:0}
 .tmf-fillall-bar--min{width:auto}
 .tmf-fillall-bar--min .tmf-fillall-body{display:none}
 .tmf-autofill-dot{display:none;width:9px;height:9px;border-radius:50%;background:var(--tmf-accent);box-shadow:0 0 6px var(--tmf-accent);animation:tmfPulse 1s ease-in-out infinite}
@@ -319,6 +329,22 @@
     // Write every line for a player, not a developer: one short sentence, plain words,
     // what changed for them rather than what changed in the code.
     const CHANGELOG = [
+        {
+            version: "1.6.8",
+            date: "2026-10-20",
+            changes: [
+                'New NPC warning: if a Torn shop would pay more for an item than your listing nets after tax, its Fill button and price box turn amber (hover to see the price and which NPC pays it), and a manual fill says so. The session receipt lists those items too.',
+                'It needs your Torn API key, uses one request every 14 days, and can be switched off in Quick changes.'
+            ]
+        },
+        {
+            version: "1.6.7",
+            date: "2026-10-20",
+            changes: [
+                'The Bazaar Add page now matches Manage: the star sits right after the item name, the Fill button sits in the middle of the row, and the price column holds only the price box.',
+                'The extra select box on Bazaar Add rows is gone. Ticking Torn\'s own box on a row now prices it for you, and unticking takes that price back.'
+            ]
+        },
         {
             version: "1.6.6",
             date: "2026-10-20",
@@ -503,6 +529,37 @@
     let categoryQuantities = loadCategoryQuantities();
     let itemCategoryCache = loadItemCategoryCache();
 
+    // NPC warning: what a Torn shop pays for each item (the "sell_price" in Torn's item list). One
+    // request for the whole list fills this, then it is reused for 14 days, so warning on every
+    // row costs no extra requests while filling. Needs a Torn API key; without one it stays quiet.
+    const NPC_WARN_KEY = "freaky-market-helper-npc-warning";
+    const NPC_PRICES_KEY = "freaky-market-helper-npc-prices";
+    const NPC_PRICES_TTL_MS = 14 * 24 * 60 * 60 * 1000;
+    const NPC_RETRY_MS = 10 * 60 * 1000;
+    const npcItemsUrl = "https://api.torn.com/torn/?selections=items&key={apiKey}&comment=MarketFiller";
+    // Which NPC shop deals in each item. Built from tornstats.com/shops (stock lists, by item id) and the
+    // Torn wiki 'can be sold' tables (by name). A shop that stocks an item also buys it back. Items
+    // missing here still get a warning; it just says "NPC" without a name.
+    const NPC_SHOP_IDS = {"Big Al's Gun Shop":[1,2,3,12,13,650,392,649,14,5,648,647,6,173,15,7,22,16,176,23,646,9,18,33,174,10,27,19,28,34,29,49,30,25,24,32],"Sally's Sweet Shop":[310,210,209,920],"TC Clothing":[404],"Bits 'n' Bobs":[97,403,186,560,182,215,401,183,129,64,184,181,187,394,180,857,859,858,861,860,862,856,863,172,1361],"Jewelry Store":[51,52,53,54],"Super Store":[417,61,44,957,956,1123],"Docks":[498,500,495,506,502,504,503,93,512,515,508,82,85,521,517,499,518,514,509,79,511],"Post Office":[372,377,378,379],"Pharmacy":[68,67,66,731,465,464,814,463,1249,1143],"Nikeh Performance":[329,330,331,106,1268],"Recycling Center":[1270,1233],"Print Store":[1321,1322,1316,1319,1318,1290,1382]};
+    const NPC_SHOP_NAMES = {"Sally's Sweet Shop":["Bag of Bloody Eyeballs","Bag of Bon Bons","Bag of Candy Kisses","Bag of Chocolate Kisses","Bag of Chocolate Truffles","Bag of Humbugs","Bag of Sherbet","Bag of Tootsie Rolls","Big Box of Chocolate Bars","Box of Bon Bons","Box of Chocolate Bars","Box of Extra Strong Mints","Box of Sweet Hearts","Jawbreaker","Lollipop","Pixie Sticks"],"TC Clothing":["Bandana","Bikini","Bloody Apron","Coconut Bra","Diving Gloves","Festive Socks","Flippers","Jacket","Kabuki Mask","Mediocre T-Shirt","Mountie Hat","Peg Leg","Proda Sunglasses","Santa Boots","Santa Gloves","Santa Hat","Santa Jacket","Santa Trousers","Snorkel","Speedo","Sports Shades","Straitjacket","Sweater","Tank Top","Trainers","Trench Coat","Wetsuit","Witch's Hat"],"Recycling Center":["Afro Comb","Beach Ball","Blanket","Bleaching Tray","Boat Engine","Bottle Cap","Broom","Bull Semen","Bunch of Black Roses","Bunch of Carnations","Bunch of Flowers","Car Battery","Cigar Cutter","Clippers","Compass","Cosmetics Case","Crazy Straw","Crockpot","Daffodil","Dart Board","Dentures","Detergent","Dozen Roses","DVD Player","Family Photo","Fire Hydrant","Fishing Rod","Floor Cleaner","Formaldehyde","Funeral Wreath","Garden Gnome","Grain","Hard Drive","Hockey Stick","Headphones","Jade Buddha","Jigsaw Puzzle","Lipstick","Lubricant","Magazine","Maneki Neko","Mayan Statue","Microwave","Mix CD","Model Space Ship","Model Spine","Mop","Mouthwash","Nodding Turtle","Nitrous Tank","Notepad","Oxygen Tank","Pack of Cuban Cigars","Pack of Music CDs","Paperclips","Pele Charm","Perfume","Persian Rug","Phone Card","Picture Frame","Plunger","Razor Wire","RS232 Cable","Scalp Massager","Scrap Metal","Sensu","Sextant","Shampoo","Shaving Foam","Ship in a Bottle","Silver Cutlery Set","Single Red Rose","Snowboard","Soap on a Rope","Soccer Ball","Spoon","Stamp Collection","Stapler","Steel Drum","Subway Pass","Tampon","Tailor's Dummy","Tin Can","Tire","Toothbrush","Toothpaste","Towel","Tractor Part","Travel Mug","Umbrella","Vitamins","Yakitori Lantern","Yucca Plant"],"Print Store":["ATM Key","Adhesive Plastic","Bank Check","Birth Certificate","Cardstock","Collection Bucket","Concert Ticket","Credit Card","Crushed Enamel","Diploma","Driver's License","Fountain Pen","Glue","ID Badge","Lanyard","License Plate","Medical License","Ordination Certificate","Parking Permit","Passport","Perforator","Police Badge","Prescription","Sewing Kit","Skeleton Key","Travel Visa"],"Pawn Shop":["Bearer Bond","Counterfeit Manga","Priceless Painting","Raw Ivory","Donator Pack"]};
+    // For an item neither list names: the shop that deals in its type. Checked against the full item
+    // list, this matched the stock lists for 71 of 72 items, so it is a good guess, not a certainty.
+    const NPC_SHOP_BY_TYPE = { "Melee": "Big Al's Gun Shop", "Primary": "Big Al's Gun Shop", "Secondary": "Big Al's Gun Shop",
+        "Defensive": "Big Al's Gun Shop", "Car": "Docks", "Jewelry": "Jewelry Store", "Plushie": "Bits 'n' Bobs",
+        "Flower": "Bits 'n' Bobs", "Candy": "Sally's Sweet Shop", "Clothing": "TC Clothing" };
+    let npcWarnOn = localStorage.getItem(NPC_WARN_KEY) !== '0';
+    let npcPrices = null;      // { ts, prices: { itemId: sellPrice } }
+    let npcLoading = null;
+    let npcFailedAt = 0;
+    try {
+        let stored = JSON.parse(localStorage.getItem(NPC_PRICES_KEY) ?? 'null');
+        if (stored != null && typeof stored.ts === 'number' && stored.prices != null && typeof stored.prices === 'object' && stored.shops != null){
+            npcPrices = stored;
+        }
+    } catch (error) {
+        npcPrices = null;
+    }
+
     // "Fill All" auto-fill mode state. One activation fills each favourite item once;
     // rows appearing later (category/tab switches) are picked up by the mutation observer.
     const FILL_COOLDOWN_MIN_MS = 600;
@@ -623,8 +680,31 @@
         // Bazaar Manage: the price column is too narrow for a button, so the Update button goes in
         // the row's Details column (the name cell if there is none) and the star after the name.
         const manageRow = isBazaarPage && currentPage == pages.ViewItems;
-        const descHost = manageRow ? wrapperParent.querySelector('[class*=desc___]') : null;
-        const detailsHost = manageRow ? (wrapperParent.querySelector('[class*=bonuses___]') ?? descHost) : null;
+        // Bazaar Add Items is laid out like Manage: the star sits after the item name, and the Fill
+        // button (with the select box) goes in the cell between the name and the Qty box, the
+        // equivalent of Manage's Details column. The price column keeps only the price box.
+        // If that cell cannot be found, both go in a row of their own under the name.
+        const bazaarAddRow = isBazaarPage && currentPage == pages.AddItems;
+        let descHost = manageRow ? wrapperParent.querySelector('[class*=desc___]') : null;
+        let detailsHost = manageRow ? (wrapperParent.querySelector('[class*=bonuses___]') ?? descHost) : null;
+        if (bazaarAddRow){
+            const nameCell = wrapperParent.querySelector('.name-wrap') ?? wrapperParent.querySelector('[class*=desc___]');
+            const detailsCell = findBazaarDetailsCell(wrapperParent);
+            if (nameCell != null && detailsCell != null){
+                descHost = nameCell;
+                detailsHost = detailsCell;
+                detailsCell.classList.add('tmf-bz-details');
+            } else if (nameCell != null){
+                let controls = nameCell.querySelector('.tmf-bz-controls');
+                if (controls == null){
+                    controls = document.createElement('div');
+                    controls.className = 'tmf-bz-controls';
+                    nameCell.append(controls);
+                }
+                descHost = controls;
+                detailsHost = controls;
+            }
+        }
         const span = document.createElement('span');
         span.className = detailsHost != null ? 'fmh-button fmh-inline' : 'fmh-button input-money-symbol';
         if (detailsHost == null){
@@ -684,7 +764,10 @@
                 }
             }
             // Select box (Add Items only): tick it to price and fill the row, untick to clear it.
-            if (currentPage == pages.AddItems && favHost.querySelector('.tmf-select') == null){
+            const selectHost = (bazaarAddRow && detailsHost != null) ? detailsHost : favHost;
+            // The bazaar already has its own tick box on each row, so it gets no second one from us:
+            // ticking Torn's box prices the row instead (see scanBazaarInputs).
+            if (currentPage == pages.AddItems && !bazaarAddRow && selectHost.querySelector('.tmf-select') == null){
                 const selectBox = document.createElement('span');
                 selectBox.className = 'tmf-select';
                 selectBox.title = 'Select this item: prices it and fills the quantity. Click again to clear.';
@@ -694,7 +777,11 @@
                     let currentId = getRowItemId(wrapperParent);
                     await triggerFill(span, currentId > 0 ? currentId : itemId);
                 });
-                favHost.prepend(selectBox);
+                if (selectHost === detailsHost && descHost !== detailsHost){
+                    selectHost.append(selectBox);
+                } else {
+                    selectHost.prepend(selectBox);
+                }
             }
             placeFillButton(span, detailsHost, moneyGroup);
             if (autoFillActive){
@@ -703,6 +790,48 @@
         } else {
             placeFillButton(span, detailsHost, moneyGroup);
         }
+    }
+
+    // The cell of a bazaar Add Items row that sits between the name and the Qty box: the one
+    // holding the market-price text, never the cell with Torn's own tick box.
+    function findBazaarDetailsCell(row){
+        const nameEl = row.querySelector('.name-wrap');
+        const amountEl = row.querySelector('.amount');
+        if (nameEl == null || amountEl == null){
+            return null;
+        }
+        let common = nameEl;
+        while (common != null && !common.contains(amountEl)){
+            common = common.parentElement;
+        }
+        if (common == null){
+            return null;
+        }
+        const childOf = function(el){
+            while (el.parentElement != null && el.parentElement !== common){
+                el = el.parentElement;
+            }
+            return el;
+        };
+        const kids = Array.from(common.children);
+        const from = kids.indexOf(childOf(nameEl));
+        const to = kids.indexOf(childOf(amountEl));
+        if (from < 0 || to <= from){
+            return null;
+        }
+        let withTickBox = null;
+        for (let i = to - 1; i > from; i--){
+            const cell = kids[i];
+            if (cell.textContent.trim() === ''){
+                continue;
+            }
+            if (cell.querySelector('input[type=checkbox]') != null){
+                withTickBox = withTickBox ?? cell;
+                continue;
+            }
+            return cell;
+        }
+        return withTickBox;
     }
 
     // Next to the item name (before the star) when there is a name cell to use, else inside the price box.
@@ -1764,6 +1893,140 @@
 
     // showPopup=false is the auto-fill path: no prices popup, no input changes on
     // API errors. Returns "ok" | "skipped" | "rate-limited" | "invalid-key" | "error".
+    // item id -> shop name: by id where the shop's stock list gave one, otherwise by matching the
+    // wiki's item names against the names in Torn's own item list.
+    function buildNpcShopMap(items){
+        let simple = function(text){ return String(text).toLowerCase().replace(/[^a-z0-9]/g, ''); };
+        let map = {};
+        Object.keys(NPC_SHOP_IDS).forEach(function(shop){
+            NPC_SHOP_IDS[shop].forEach(function(id){
+                if (map[id] == null){
+                    map[id] = shop;
+                }
+            });
+        });
+        let byName = {};
+        Object.keys(NPC_SHOP_NAMES).forEach(function(shop){
+            NPC_SHOP_NAMES[shop].forEach(function(name){
+                if (byName[simple(name)] == null){
+                    byName[simple(name)] = shop;
+                }
+            });
+        });
+        Object.keys(items).forEach(function(id){
+            let shop = items[id] != null ? byName[simple(items[id].name ?? '')] : null;
+            if (shop != null && map[id] == null){
+                map[id] = shop;
+            }
+        });
+        Object.keys(items).forEach(function(id){
+            let entry = items[id];
+            if (map[id] == null && entry != null && Number(entry.sell_price) > 0 && NPC_SHOP_BY_TYPE[entry.type] != null
+                && (entry.type !== 'Jewelry' || Number(entry.buy_price) > 0)){
+                map[id] = NPC_SHOP_BY_TYPE[entry.type];
+            }
+        });
+        return map;
+    }
+
+    // The NPC shop known to deal in an item, or null.
+    function npcShopSync(itemId){
+        return (npcPrices != null && npcPrices.shops != null) ? (npcPrices.shops[itemId] ?? null) : null;
+    }
+
+    // The cached NPC sell price for an item, or null when it is not known (yet).
+    function npcSellPriceSync(itemId){
+        if (npcPrices == null){
+            return null;
+        }
+        let value = Number(npcPrices.prices[itemId]);
+        return isFinite(value) ? value : null;
+    }
+
+    // Make sure the NPC price list is loaded (one request, then 14 days of reuse). Never throws.
+    async function ensureNpcPrices(){
+        if (npcPrices != null && (Date.now() - npcPrices.ts) < NPC_PRICES_TTL_MS){
+            return;
+        }
+        if (!hasUsableApiKey() || (Date.now() - npcFailedAt) < NPC_RETRY_MS){
+            return;
+        }
+        if (npcLoading == null){
+            npcLoading = (async function(){
+                try {
+                    let data = await fetch(npcItemsUrl.replace("{apiKey}", apiKey)).then(response => response.json());
+                    if (data.error != null || data.items == null){
+                        npcFailedAt = Date.now();
+                        return;
+                    }
+                    let prices = {};
+                    Object.keys(data.items).forEach(function(id){
+                        let value = Number(data.items[id].sell_price);
+                        if (isFinite(value)){
+                            prices[id] = value;
+                        }
+                    });
+                    npcPrices = { ts: Date.now(), prices: prices, shops: buildNpcShopMap(data.items) };
+                    try {
+                        localStorage.setItem(NPC_PRICES_KEY, JSON.stringify(npcPrices));
+                    } catch (error) {
+                        // Storage full or blocked: the list still serves this page load.
+                    }
+                } catch (error) {
+                    console.warn("[FreakyMarketHelper] NPC price list unavailable:", error);
+                    npcFailedAt = Date.now();
+                } finally {
+                    npcLoading = null;
+                }
+            })();
+        }
+        await npcLoading;
+    }
+
+    // Take the amber warning off a row's Fill button and price box.
+    function clearNpcMarks(row){
+        if (row == null){
+            return;
+        }
+        row.querySelectorAll('.tmf-npc').forEach(function(el){
+            el.classList.remove('tmf-npc');
+            el.removeAttribute('title');
+        });
+    }
+
+    // Warn when a Torn shop would pay more for the item than this listing nets after tax. The
+    // Fill button and price box turn amber with the numbers on hover, and a manual fill also says
+    // it in a toast. Returns the figures when the warning applies, otherwise null.
+    async function checkNpcPrice(row, itemId, price, quiet){
+        clearNpcMarks(row);
+        if (!npcWarnOn || row == null){
+            return null;
+        }
+        await ensureNpcPrices();
+        let npc = npcSellPriceSync(itemId);
+        let net = price * marketTaxFactor;
+        if (npc == null || !(npc > 0) || !(npc > net)){
+            return null;
+        }
+        let shop = npcShopSync(itemId);
+        let text = 'NPC ' + (shop != null ? shop + ' ' : '') + 'pays ' + money(npc);
+        let button = row.querySelector('.fmh-button');
+        if (button != null){
+            button.classList.add('tmf-npc');
+            button.title = text;
+        }
+        row.querySelectorAll('.input-money:not([type=hidden])').forEach(function(input){
+            if (input.closest('[class*=removeAmountInput]') == null){
+                input.classList.add('tmf-npc');
+                input.title = text;
+            }
+        });
+        if (!quiet){
+            showToast('⚠ ' + text);
+        }
+        return { npc: npc, net: net, price: price };
+    }
+
     async function performFill(target, itemId, showPopup){
         // The price boxes: inside the button's own price group, or, when the button sits beside the
         // item name (bazaar Manage), the ones in its row.
@@ -1785,6 +2048,7 @@
                 await applyQuantity(target, action, null, !showPopup);
             }
             switchActionFlag(target);
+            clearNpcMarks(priceRow);
             priceInputs.forEach(x => {x.value = ''});
             priceInputs[0].dispatchEvent(new Event("input", {bubbles: true}));
             if (getCurrentPage() == pages.AddItems){
@@ -1832,6 +2096,7 @@
         }
         priceInputs.forEach(x => {x.value = price});
         priceInputs[0].dispatchEvent(new Event("input", {bubbles: true}));
+        await checkNpcPrice(priceRow ?? target, itemId, price, !showPopup);
         if (getCurrentPage() == pages.AddItems){
             await recordListing(target, itemId, price, describeFill(prices, pricing.formula));
         }
@@ -2222,6 +2487,7 @@
                 '<select class="tmf-quick-round"><option value="0">Exact</option><option value="10">To $10</option><option value="100">To $100</option><option value="1000">To $1,000</option></select>' +
                 '<label>Round direction</label>' +
                 '<select class="tmf-quick-dir"><option value="nearest">Nearest</option><option value="down">Always down</option><option value="up">Always up</option></select>' +
+                '<label class="tmf-quick-check"><input type="checkbox" class="tmf-quick-npc"> &#9888; Warn if an NPC pays more</label>' +
                 '<label>Save these as a preset</label>' +
                 '<div class="tmf-quick-row"><input type="text" class="tmf-quick-name" placeholder="Preset name" maxlength="24" spellcheck="false" autocomplete="off"><button type="button" class="tmf-quick-btn tmf-quick-save">Save</button></div>' +
             '</div>';
@@ -2291,6 +2557,21 @@
             }
         });
         box.querySelector('.tmf-quick-save').addEventListener('click', saveQuickPreset);
+        box.querySelector('.tmf-quick-npc').addEventListener('change', function(event){
+            npcWarnOn = event.target.checked;
+            try {
+                localStorage.setItem(NPC_WARN_KEY, npcWarnOn ? '1' : '0');
+            } catch (error) {
+                // Blocked storage: the choice still holds until the page reloads.
+            }
+            if (!npcWarnOn){
+                clearNpcMarks(document);
+            } else if (!hasUsableApiKey()){
+                quickNote('NPC warnings need a Torn API key. Add one in Settings.', false);
+            } else {
+                quickNote('NPC warnings on. They show the next time you fill a row.', true);
+            }
+        });
         deleteButton.addEventListener('click', function(){
             const index = parseInt(presetSelect.value.substring(3), 10);
             const list = readCustomPresets();
@@ -2424,6 +2705,7 @@
             setQuickQuantity(profile.qty);
             box.querySelector('.tmf-quick-round').value = String(profile.round ?? 0);
             box.querySelector('.tmf-quick-dir').value = roundingDir;
+            box.querySelector('.tmf-quick-npc').checked = npcWarnOn;
         } catch (error) {
             console.warn('[FreakyMarketHelper] Quick changes could not load yet:', error);
         }
@@ -2884,6 +3166,7 @@
         if (price != null){
             setReactValue(input, price);
             input.dataset.tmfBazaar = 'done';
+            checkNpcPrice(row, itemId, price, true);
         } else {
             input.dataset.tmfBazaar = '1'; // nothing was set, so the next click tries again
         }
@@ -2964,6 +3247,22 @@
             }
             input.dataset.tmfBazaar = '1';
             input.addEventListener('focus', function(){ onBazaarPriceFocus(input, found.itemId, found.row); });
+            // Torn's own tick box on the row: ticking it prices the row too, and unticking takes
+            // back a price we set. The short delay lets Torn finish its own handling first.
+            let tickBox = found.row.querySelector('input[type=checkbox]');
+            if (tickBox != null && tickBox.dataset.tmfBazaarTick == null){
+                tickBox.dataset.tmfBazaarTick = '1';
+                tickBox.addEventListener('change', function(){
+                    setTimeout(function(){
+                        if (tickBox.checked){
+                            onBazaarPriceFocus(input, found.itemId, found.row);
+                        } else if (input.dataset.tmfBazaar === 'done'){
+                            setReactValue(input, '');
+                            input.dataset.tmfBazaar = '1';
+                        }
+                    }, 60);
+                });
+            }
             let amountInput = found.row.querySelector('.amount .clear-all:not([type=hidden])');
             if (amountInput != null && amountInput.dataset.tmfBazaarAmountBound == null){
                 amountInput.dataset.tmfBazaarAmountBound = '1';
@@ -3102,6 +3401,8 @@
             reference: reference,
             referenceLabel: referenceLabel,
             taxFactor: marketTaxFactor,
+            npc: npcSellPriceSync(id),
+            npcShop: npcShopSync(id),
             ts: Date.now()
         };
         saveSession();
@@ -3179,6 +3480,13 @@
             html += '<hr class="tmf-receipt-rule">' +
                     '<div class="tmf-receipt-line"><span>Market reference' + (totals.refItems < totals.items ? ' (' + totals.refItems + ' of ' + totals.items + ')' : '') + '</span><span>' + money(totals.refValue) + '</span></div>' +
                     '<div class="tmf-receipt-line ' + (totals.diff >= 0 ? 'tmf-receipt-gain' : 'tmf-receipt-loss') + '"><span>Net vs market</span><span>' + diffLabel(totals) + '</span></div>';
+        }
+        let belowNpc = entries.filter(function(e){
+            return e.npc != null && e.npc > 0 && e.npc > e.price * (e.taxFactor ?? 0.95);
+        });
+        if (belowNpc.length > 0){
+            html += '<hr class="tmf-receipt-rule"><div class="tmf-receipt-line tmf-receipt-loss"><span>&#9888; Below NPC price</span><span>' + belowNpc.length + (belowNpc.length === 1 ? ' item' : ' items') + '</span></div>' +
+                    '<div class="tmf-receipt-line tmf-rsub"><span>' + escapeHtml(belowNpc.map(function(e){ return e.name + ' (NPC ' + (e.npcShop != null ? e.npcShop + ' ' : '') + money(e.npc) + ')'; }).join(', ')) + '</span></div>';
         }
         html += '</div><div class="tmf-receipt-note">Your purchase cost is not known to the script, so profit/loss is measured against each item&rsquo;s market reference (average sale price, or Torn market value), after tax (5% on the Item Market, none on the bazaar). Positive means you are listing above the market. The 5% tax comes off the higher selling price, so breaking even takes about +5.3% over the reference, not +5%.</div>';
         return html;
