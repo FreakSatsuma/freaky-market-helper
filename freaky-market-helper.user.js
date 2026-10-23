@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Freaky Market Helper
 // @namespace    https://www.torn.com/profiles.php?XID=4313844
-// @version      1.6.8
+// @version      1.6.9
 // @description  Fill your Torn Item Market and Bazaar listings in one click. Prices from the cheapest listing, average price, market value or live bazaars (weav3r.dev), with your own formulas and min/max ranges, quantity rules, favourites with Fill All, a session receipt and a dollar bazaar mode. Settings are kept separately for the Item Market and the Bazaar.
 // @author       FreakSatsuma [4313844]
 // @license      MIT License
@@ -68,7 +68,7 @@
     }
 
     // Keep in sync with @version above — it keys the "What's new" popup.
-    const SCRIPT_VERSION = "1.6.8";
+    const SCRIPT_VERSION = "1.6.9";
 
     const itemUrl = "https://api.torn.com/torn/{itemId}?selections=items&key={apiKey}&comment=MarketFiller";
     const marketUrlV2 = "https://api.torn.com/v2/market?id={itemId}&selections=itemMarket&key={apiKey}&comment=MarketFiller";
@@ -306,15 +306,27 @@ input.tmf-npc{outline:2px solid #fbbf24!important;outline-offset:-2px}
 .tmf-modal--bazaar .tmf-modal-cat-row .tmf-modal-cat-qty{flex:1 1 45%}
 .tmf-modal--bazaar .tmf-modal-cat-head span:nth-child(1){flex:1 1 55%}
 .tmf-modal--bazaar .tmf-modal-cat-head span:nth-child(3){flex:1 1 45%}
-.tmf-receipt{font:12px/1.5 ui-monospace,Menlo,Consolas,monospace;background:#0d0f13;border:1px solid var(--tmf-line);border-radius:8px;padding:12px 14px;margin-top:10px}
-.tmf-receipt-empty{color:var(--tmf-dim);text-align:center;padding:14px 0;font-family:inherit}
-.tmf-receipt-line{display:flex;justify-content:space-between;gap:10px}
-.tmf-receipt-line .tmf-rname{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tmf-receipt-line .tmf-rsub{color:var(--tmf-dim)}
-.tmf-receipt-rule{border:0;border-top:1px dashed var(--tmf-line);margin:8px 0}
-.tmf-receipt-total{font-weight:700;color:#fff}
-.tmf-receipt-gain{color:var(--tmf-accent);font-weight:700}
-.tmf-receipt-loss{color:var(--tmf-bad);font-weight:700}
+.tmf-receipt{font:13px/1.4 -apple-system,Segoe UI,Roboto,sans-serif;margin-top:10px}
+.tmf-receipt-empty{color:var(--tmf-dim);text-align:center;padding:18px 0;background:#0d0f13;border:1px solid var(--tmf-line);border-radius:10px}
+.tmf-receipt-hero{background:#0d0f13;border:1px solid var(--tmf-line);border-radius:10px;padding:12px 14px;margin-bottom:10px}
+.tmf-receipt-hero .tmf-rbig{font:700 22px/1.2 -apple-system,Segoe UI,Roboto,sans-serif;color:#fff}
+.tmf-receipt-hero .tmf-rcap{font-size:11px;color:var(--tmf-dim);text-transform:uppercase;letter-spacing:.05em}
+.tmf-receipt-stats{display:flex;gap:14px;margin-top:10px;padding-top:10px;border-top:1px solid var(--tmf-line)}
+.tmf-receipt-stats>div{flex:1 1 0;min-width:0}
+.tmf-receipt-stats .tmf-rval{font-weight:600;color:var(--tmf-text);font-size:13px;word-break:break-word}
+.tmf-receipt-gain{color:var(--tmf-accent)!important}
+.tmf-receipt-loss{color:var(--tmf-bad)!important}
+.tmf-receipt-list{background:#0d0f13;border:1px solid var(--tmf-line);border-radius:10px;overflow:hidden}
+.tmf-ritem{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 12px;border-top:1px solid var(--tmf-line)}
+.tmf-ritem:first-child{border-top:0}
+.tmf-ritem .tmf-rleft{min-width:0;flex:1 1 auto}
+.tmf-ritem .tmf-rname{color:var(--tmf-text);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tmf-ritem .tmf-rsub{color:var(--tmf-dim);font-size:12px}
+.tmf-ritem .tmf-rright{text-align:right;flex:0 0 auto}
+.tmf-ritem .tmf-rtotal{color:#fff;font-weight:600}
+.tmf-ritem .tmf-rdelta{font-size:12px;font-weight:600;color:var(--tmf-dim)}
+.tmf-receipt-warn{margin-top:10px;padding:9px 12px;border-radius:10px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.35);color:var(--tmf-warn);font-size:12px}
+.tmf-receipt-warn b{display:block;margin-bottom:2px}
 .tmf-receipt-note{margin-top:8px;font:11px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;color:var(--tmf-dim)}
 .tmf-modal input.tmf-modal-invalid{border-color:var(--tmf-bad)!important;box-shadow:0 0 0 3px rgba(248,113,113,.18)!important}
 `);
@@ -329,6 +341,16 @@ input.tmf-npc{outline:2px solid #fbbf24!important;outline-offset:-2px}
     // Write every line for a player, not a developer: one short sentence, plain words,
     // what changed for them rather than what changed in the code.
     const CHANGELOG = [
+        {
+            version: "1.6.9",
+            date: "2026-10-23",
+            changes: [
+                'Fixed the panel on phones (Torn PDA): tapping its title now opens and closes it properly.',
+                'Fixed Quick changes overwriting Settings: after you save in Settings, the quick panel now shows what you saved and can no longer put an older preset back.',
+                'The session receipt now starts fresh on every page refresh, and nothing from it is kept in storage.',
+                'Redesigned the session receipt: a big total at the top, then a clean list with the quantity, price and how far each listing is above or below market.'
+            ]
+        },
         {
             version: "1.6.8",
             date: "2026-10-20",
@@ -2436,11 +2458,19 @@ input.tmf-npc{outline:2px solid #fbbf24!important;outline-offset:-2px}
             }
         }
 
-        bar.addEventListener('mousedown', function(e){ begin(e.clientX, e.clientY, e.target); });
+        // A phone follows every tap with emulated mouse events. Without this the tap toggled the
+        // panel on the touch and again on the emulated mouse press, so it never seemed to open or close.
+        let lastTouchAt = 0;
+        bar.addEventListener('mousedown', function(e){
+            if (Date.now() - lastTouchAt < 1000) {
+                return;
+            }
+            begin(e.clientX, e.clientY, e.target);
+        });
         document.addEventListener('mousemove', function(e){ if (candidate) { move(e.clientX, e.clientY); } });
         document.addEventListener('mouseup', end);
 
-        bar.addEventListener('touchstart', function(e){ let t = e.touches[0]; begin(t.clientX, t.clientY, e.target); }, { passive: true });
+        bar.addEventListener('touchstart', function(e){ lastTouchAt = Date.now(); let t = e.touches[0]; begin(t.clientX, t.clientY, e.target); }, { passive: true });
         document.addEventListener('touchmove', function(e){
             if (!candidate) {
                 return;
@@ -2451,8 +2481,8 @@ input.tmf-npc{outline:2px solid #fbbf24!important;outline-offset:-2px}
                 e.preventDefault(); // stop the page scrolling while dragging
             }
         }, { passive: false });
-        document.addEventListener('touchend', end);
-        document.addEventListener('touchcancel', end);
+        document.addEventListener('touchend', function(e){ lastTouchAt = Date.now(); end(e); });
+        document.addEventListener('touchcancel', function(e){ lastTouchAt = Date.now(); end(e); });
 
         // Capture-phase on the bar itself: runs before any child's own click handler, so the
         // click that follows a drag never reaches Fill All or the settings cog. Listening on the
@@ -2514,8 +2544,15 @@ input.tmf-npc{outline:2px solid #fbbf24!important;outline-offset:-2px}
         function manualChange(){
             presetSelect.value = '';
             deleteButton.disabled = true;
-            applyQuickChanges();
+            applyQuickChanges(false);
         }
+        // Remember which controls the person really used, so a change event that did not come from
+        // them (a phone re-sending one, Settings refreshing the panel) can never save anything.
+        [['.tmf-quick-formula', 'delta'], ['.tmf-quick-qty', 'qty'], ['.tmf-quick-round', 'round'], ['.tmf-quick-dir', 'roundDir']].forEach(function(pair){
+            ['focus', 'pointerdown', 'touchstart', 'keydown', 'input'].forEach(function(type){
+                box.querySelector(pair[0]).addEventListener(type, function(){ quickDirty.add(pair[1]); }, { passive: true });
+            });
+        });
         formula.addEventListener('change', manualChange);
         formula.addEventListener('keydown', function(event){
             event.stopPropagation();
@@ -2537,13 +2574,14 @@ input.tmf-npc{outline:2px solid #fbbf24!important;outline-offset:-2px}
                     box.querySelector('.tmf-quick-round').value = String(preset.round);
                     box.querySelector('.tmf-quick-dir').value = preset.dir;
                     formula.dispatchEvent(new Event('input'));
-                    applyQuickChanges();
+                    applyQuickChanges(true);
                 }
                 return;
             }
             // A built-in preset only sets the formula, as it always has.
             formula.value = value;
             formula.dispatchEvent(new Event('input'));
+            quickDirty.add('delta');
             applyQuickChanges();
             event.target.value = '';
         });
@@ -2706,6 +2744,8 @@ input.tmf-npc{outline:2px solid #fbbf24!important;outline-offset:-2px}
             box.querySelector('.tmf-quick-round').value = String(profile.round ?? 0);
             box.querySelector('.tmf-quick-dir').value = roundingDir;
             box.querySelector('.tmf-quick-npc').checked = npcWarnOn;
+            quickShown = readQuickControls(box);
+            quickDirty.clear();
         } catch (error) {
             console.warn('[FreakyMarketHelper] Quick changes could not load yet:', error);
         }
@@ -2713,21 +2753,47 @@ input.tmf-npc{outline:2px solid #fbbf24!important;outline-offset:-2px}
 
     // Save whatever the quick panel shows. A formula that does not parse is left unsaved and
     // marked, so a typo can never reach the fill buttons.
-    function applyQuickChanges(){
+    // What the quick panel showed the last time it matched the saved settings. A change is only
+    // saved for a control that now differs from this, so a stale value left in the panel (a box you
+    // were typing in, a phone re-sending a change) can never overwrite what Settings just saved.
+    let quickShown = null;
+    // Controls the person has actually touched since the panel last matched the saved settings. A
+    // change event for a control not in here is not from them, so it is ignored.
+    let quickDirty = new Set();
+
+    function readQuickControls(box){
+        return {
+            delta: box.querySelector('.tmf-quick-formula').value,
+            qty: box.querySelector('.tmf-quick-qty').value,
+            round: Number(box.querySelector('.tmf-quick-round').value),
+            roundDir: box.querySelector('.tmf-quick-dir').value
+        };
+    }
+
+    // force: a preset was picked on purpose, so all four values are saved.
+    function applyQuickChanges(force){
         const box = document.querySelector('.tmf-quick');
         if (box == null) {
             return;
         }
-        const formula = box.querySelector('.tmf-quick-formula').value;
-        if (settingProblem(formula) != null) {
+        const now = readQuickControls(box);
+        if (settingProblem(now.delta) != null) {
             return;
         }
         const draft = profileToDraft(loadProfile(PAGE_PROFILE));
-        draft.delta = formula;
-        draft.qty = box.querySelector('.tmf-quick-qty').value;
-        draft.round = Number(box.querySelector('.tmf-quick-round').value);
-        draft.roundDir = box.querySelector('.tmf-quick-dir').value;
+        let changed = false;
+        ['delta', 'qty', 'round', 'roundDir'].forEach(function(field){
+            if (force === true || (quickDirty.has(field) && (quickShown == null || now[field] !== quickShown[field]))) {
+                draft[field] = now[field];
+                changed = true;
+            }
+        });
+        if (!changed) {
+            return;
+        }
         saveProfileDraft(PAGE_PROFILE, draft);
+        quickShown = now;
+        quickDirty.clear();
         const note = box.querySelector('.tmf-quick-note');
         note.className = 'tmf-quick-note tmf-ok';
         note.textContent = 'Saved. ' + describeSetting(draft.delta.trim() === '' ? PROFILE_DEFAULT_DELTA[PAGE_PROFILE] : draft.delta);
@@ -3294,23 +3360,17 @@ input.tmf-npc{outline:2px solid #fbbf24!important;outline-offset:-2px}
     // item's market reference (the average sale price, or Torn's market value) — the question
     // answered is "am I listing above or below the market, after tax?".
     function loadSession(){
+        // The receipt lives in memory only: every page load starts a fresh one, and any ledger a
+        // previous version left in storage is deleted so nothing lingers.
         try {
-            let parsed = JSON.parse(localStorage.getItem(sessionKey) ?? "null");
-            if (parsed && typeof parsed === 'object' && parsed.items && typeof parsed.items === 'object'){
-                return parsed;
-            }
+            localStorage.removeItem(sessionKey);
         } catch (error) {
-            // A corrupt ledger just starts over.
+            // Blocked storage: nothing to clean up.
         }
         return { start: Date.now(), items: {} };
     }
 
     function saveSession(){
-        try {
-            localStorage.setItem(sessionKey, JSON.stringify(session));
-        } catch (error) {
-            // Quota or blocked storage: the in-memory ledger still serves this page load.
-        }
         updateReportBadge();
     }
 
@@ -3466,29 +3526,34 @@ input.tmf-npc{outline:2px solid #fbbf24!important;outline-offset:-2px}
             return '<div class="tmf-receipt tmf-receipt-empty">Nothing listed yet this session.<br>Fill or tick an item on Add Items and it shows up here.</div>';
         }
         let totals = sessionTotals();
-        let html = '<div class="tmf-receipt">';
-        entries.forEach(function(e){
-            html += '<div class="tmf-receipt-line"><span class="tmf-rname">' + escapeHtml(e.name) + '</span><span>' + money(e.quantity * e.price) + '</span></div>' +
-                    '<div class="tmf-receipt-line tmf-rsub"><span>' + formatNumberWithCommas(e.quantity) + ' &times; ' + money(e.price) + '</span><span>' +
-                    (e.reference != null ? 'mkt ' + money(e.reference) : 'no market ref') + '</span></div>';
-        });
-        html += '<hr class="tmf-receipt-rule">' +
-                '<div class="tmf-receipt-line"><span>Items / units</span><span>' + totals.items + ' / ' + formatNumberWithCommas(totals.units) + '</span></div>' +
-                '<div class="tmf-receipt-line tmf-receipt-total"><span>Listed total</span><span>' + money(totals.listed) + '</span></div>' +
-                '<div class="tmf-receipt-line"><span>After tax</span><span>' + money(totals.net) + '</span></div>';
+        let html = '<div class="tmf-receipt"><div class="tmf-receipt-hero">' +
+                '<div class="tmf-rcap">Listed total</div><div class="tmf-rbig">' + money(totals.listed) + '</div>' +
+                '<div class="tmf-receipt-stats">' +
+                '<div><div class="tmf-rcap">After tax</div><div class="tmf-rval">' + money(totals.net) + '</div></div>' +
+                '<div><div class="tmf-rcap">Items / units</div><div class="tmf-rval">' + totals.items + ' / ' + formatNumberWithCommas(totals.units) + '</div></div>';
         if (totals.refItems > 0){
-            html += '<hr class="tmf-receipt-rule">' +
-                    '<div class="tmf-receipt-line"><span>Market reference' + (totals.refItems < totals.items ? ' (' + totals.refItems + ' of ' + totals.items + ')' : '') + '</span><span>' + money(totals.refValue) + '</span></div>' +
-                    '<div class="tmf-receipt-line ' + (totals.diff >= 0 ? 'tmf-receipt-gain' : 'tmf-receipt-loss') + '"><span>Net vs market</span><span>' + diffLabel(totals) + '</span></div>';
+            html += '<div><div class="tmf-rcap">vs market</div><div class="tmf-rval ' + (totals.diff >= 0 ? 'tmf-receipt-gain' : 'tmf-receipt-loss') + '">' + diffLabel(totals) + '</div></div>';
         }
+        html += '</div></div><div class="tmf-receipt-list">';
+        entries.forEach(function(e){
+            let delta = '';
+            if (e.reference != null && e.reference > 0){
+                let pct = (e.price / e.reference - 1) * 100;
+                delta = '<div class="tmf-rdelta ' + (pct >= 0 ? 'tmf-receipt-gain' : 'tmf-receipt-loss') + '">' + (pct >= 0 ? '+' : '') + pct.toFixed(1) + '%</div>';
+            }
+            html += '<div class="tmf-ritem"><div class="tmf-rleft"><div class="tmf-rname">' + escapeHtml(e.name) + '</div>' +
+                    '<div class="tmf-rsub">' + formatNumberWithCommas(e.quantity) + ' &times; ' + money(e.price) + '</div></div>' +
+                    '<div class="tmf-rright"><div class="tmf-rtotal">' + money(e.quantity * e.price) + '</div>' + delta + '</div></div>';
+        });
+        html += '</div>';
         let belowNpc = entries.filter(function(e){
             return e.npc != null && e.npc > 0 && e.npc > e.price * (e.taxFactor ?? 0.95);
         });
         if (belowNpc.length > 0){
-            html += '<hr class="tmf-receipt-rule"><div class="tmf-receipt-line tmf-receipt-loss"><span>&#9888; Below NPC price</span><span>' + belowNpc.length + (belowNpc.length === 1 ? ' item' : ' items') + '</span></div>' +
-                    '<div class="tmf-receipt-line tmf-rsub"><span>' + escapeHtml(belowNpc.map(function(e){ return e.name + ' (NPC ' + (e.npcShop != null ? e.npcShop + ' ' : '') + money(e.npc) + ')'; }).join(', ')) + '</span></div>';
+            html += '<div class="tmf-receipt-warn"><b>&#9888; ' + belowNpc.length + (belowNpc.length === 1 ? ' item' : ' items') + ' below NPC price</b>' +
+                    escapeHtml(belowNpc.map(function(e){ return e.name + ' (NPC ' + (e.npcShop != null ? e.npcShop + ' ' : '') + money(e.npc) + ')'; }).join(', ')) + '</div>';
         }
-        html += '</div><div class="tmf-receipt-note">Your purchase cost is not known to the script, so profit/loss is measured against each item&rsquo;s market reference (average sale price, or Torn market value), after tax (5% on the Item Market, none on the bazaar). Positive means you are listing above the market. The 5% tax comes off the higher selling price, so breaking even takes about +5.3% over the reference, not +5%.</div>';
+        html += '</div><div class="tmf-receipt-note">Percentages compare each listing to its market reference (average sale price, or Torn market value). Your purchase cost isn&rsquo;t known to the script. The 5% Item Market tax means breaking even takes about +5.3% over the reference; the bazaar has no tax.</div>';
         return html;
     }
 
