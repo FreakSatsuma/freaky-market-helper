@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Freaky Market Helper
 // @namespace    https://www.torn.com/profiles.php?XID=4313844
-// @version      1.6.9
+// @version      1.6.10
 // @description  Fill your Torn Item Market and Bazaar listings in one click. Prices from the cheapest listing, average price, market value or live bazaars (weav3r.dev), with your own formulas and min/max ranges, quantity rules, favourites with Fill All, a session receipt and a dollar bazaar mode. Settings are kept separately for the Item Market and the Bazaar.
 // @author       FreakSatsuma [4313844]
 // @license      MIT License
@@ -68,7 +68,7 @@
     }
 
     // Keep in sync with @version above — it keys the "What's new" popup.
-    const SCRIPT_VERSION = "1.6.9";
+    const SCRIPT_VERSION = "1.6.10";
 
     const itemUrl = "https://api.torn.com/torn/{itemId}?selections=items&key={apiKey}&comment=MarketFiller";
     const marketUrlV2 = "https://api.torn.com/v2/market?id={itemId}&selections=itemMarket&key={apiKey}&comment=MarketFiller";
@@ -170,9 +170,8 @@
 .fmh-button .fmh-btn{all:unset;box-sizing:border-box;cursor:pointer;min-width:46px;padding:0 10px;height:100%;min-height:26px;display:flex;align-items:center;justify-content:center;font:600 12px/1 -apple-system,Segoe UI,Roboto,sans-serif;letter-spacing:.02em;color:#04281c;background:linear-gradient(180deg,#4ade9f,var(--tmf-accent-d));border-radius:6px 0 0 6px;transition:filter .15s,transform .05s}
 .fmh-button .fmh-btn:hover{filter:brightness(1.12)}
 .fmh-button .fmh-btn:active{transform:translateY(1px)}
-.fmh-button.fmh-inline{display:inline-flex!important;vertical-align:middle;align-items:center;margin:0 6px;height:22px;width:auto!important;position:static}
-.fmh-button.fmh-inline .fmh-btn{border-radius:6px;min-height:22px;height:22px;padding:0 10px}
-.fmh-button.fmh-update .fmh-btn{color:#fff;background:linear-gradient(180deg,#60a5fa,#2563eb)}
+.fmh-button.fmh-inline{display:inline-flex!important;vertical-align:middle;align-items:center;margin:0 6px;height:26px;width:auto!important;position:static}
+.fmh-button.fmh-inline .fmh-btn{border-radius:6px;min-height:26px;height:26px;padding:0 10px}
 .fmh-button[data-action-flag=clear] .fmh-btn{color:var(--tmf-text);background:linear-gradient(180deg,#4b5160,#363b47)}
 .tmf-fav{cursor:pointer;display:inline-flex;align-items:center;justify-content:center;width:22px;font-size:17px;line-height:1;color:#7b8190;align-self:center;margin-right:2px;user-select:none;-webkit-user-select:none;transition:transform .12s,color .12s}
 .tmf-fav:hover{transform:scale(1.2);color:#aab}
@@ -199,8 +198,8 @@
 .tmf-fillall-bar--dragging{cursor:grabbing;opacity:.92}
 .tmf-fillall-bar--dragging .tmf-fillall-grip{cursor:grabbing}
 .tmf-fillall-body{display:flex;flex-direction:column;gap:6px;padding:8px 8px 8px;border-top:1px solid var(--tmf-line)}
-.tmf-fillall-cog,.tmf-fillall-report,.tmf-fillall-dollar{cursor:pointer;display:flex;align-items:center;gap:8px;height:30px;padding:0 10px;border-radius:8px;background:rgba(255,255,255,.08);color:#dfe3ea;font:600 12px/1 -apple-system,Segoe UI,Roboto,sans-serif;user-select:none;-webkit-user-select:none;transition:background .15s,color .15s}
-.tmf-fillall-cog:hover,.tmf-fillall-report:hover,.tmf-fillall-dollar:hover{background:rgba(255,255,255,.2);color:#fff}
+.tmf-fillall-cog,.tmf-fillall-report,.tmf-fillall-dollar,.tmf-quick-toggle{cursor:pointer;display:flex;align-items:center;gap:8px;height:30px;padding:0 10px;border-radius:8px;background:rgba(255,255,255,.08);color:#dfe3ea;font:600 12px/1 -apple-system,Segoe UI,Roboto,sans-serif;user-select:none;-webkit-user-select:none;transition:background .15s,color .15s}
+.tmf-fillall-cog:hover,.tmf-fillall-report:hover,.tmf-fillall-dollar:hover,.tmf-quick-toggle:hover{background:rgba(255,255,255,.2);color:#fff}
 .tmf-fillall-cog .tmf-cog-icon,.tmf-fillall-report .tmf-report-icon{font-size:14px;line-height:1;width:16px;text-align:center}
 .tmf-fillall-report .tmf-report-label,.tmf-fillall-cog .tmf-cog-label{flex:1 1 auto}
 .tmf-fillall-dollar.tmf-fillall-dollar--on{background:var(--tmf-warn);color:#2a1d00;box-shadow:0 0 8px rgba(251,191,36,.55)}
@@ -209,8 +208,6 @@
 .tmf-fillall-btn.torn-btn{all:unset;box-sizing:border-box;cursor:pointer;display:block;width:100%;text-align:center;padding:9px 14px;border-radius:8px;font:700 13px/1 -apple-system,Segoe UI,Roboto,sans-serif;letter-spacing:.03em;color:#04281c;background:linear-gradient(180deg,#4ade9f,var(--tmf-accent-d));transition:filter .15s}
 .tmf-fillall-btn.torn-btn:hover{filter:brightness(1.12)}
 .tmf-fillall-bar--active .tmf-fillall-btn.torn-btn{color:#fff;background:linear-gradient(180deg,#f87171,#b91c1c)}
-.tmf-quick-toggle{cursor:pointer;display:flex;align-items:center;gap:8px;height:30px;padding:0 10px;border-radius:8px;background:rgba(255,255,255,.08);color:#dfe3ea;font:600 12px/1 -apple-system,Segoe UI,Roboto,sans-serif;user-select:none;-webkit-user-select:none}
-.tmf-quick-toggle:hover{background:rgba(255,255,255,.2);color:#fff}
 .tmf-quick-toggle .tmf-quick-label{flex:1 1 auto}
 .tmf-quick-toggle .tmf-quick-arrow{font-size:10px;color:#9aa1b0;transition:transform .2s}
 .tmf-quick--open .tmf-quick-arrow{transform:rotate(180deg)}
@@ -341,6 +338,16 @@ input.tmf-npc{outline:2px solid #fbbf24!important;outline-offset:-2px}
     // Write every line for a player, not a developer: one short sentence, plain words,
     // what changed for them rather than what changed in the code.
     const CHANGELOG = [
+        {
+            version: "1.6.10",
+            date: "2026-11-06",
+            changes: [
+                'Fixed the Bazaar Manage page on Torn PDA: every item now gets its own Update button and star, and each one is priced from its own item. Before, one row could pick up the whole list, so prices came out wrong.',
+                'New Update all button in the panel on Manage: re-prices every listing in one go (tap it again to stop). Press Save changes afterwards to keep the new prices.',
+                'Listings priced at $1 are never changed by Update or Update all, so your $1 deals stay as they are. Items you marked excluded are skipped by Update all too.',
+                'Tidied up the buttons: Fill and Update are now the same green, same size on every page, and the panel only shows what works on the page you are on (receipt and $1 mode on Add Items, Update all on Manage).'
+            ]
+        },
         {
             version: "1.6.9",
             date: "2026-10-23",
@@ -633,6 +640,7 @@ input.tmf-npc{outline:2px solid #fbbf24!important;outline-offset:-2px}
     function scanAndInject() {
         scanScheduled = false;
         currentPage = getCurrentPage();
+        syncPanelForPage();
         if (currentPage == pages.Other) {
             return;
         }
@@ -699,16 +707,13 @@ input.tmf-npc{outline:2px solid #fbbf24!important;outline-offset:-2px}
         }
         wrapperParent.classList.add('fmh-processed');
         let itemId = getRowItemId(wrapperParent);
-        // Bazaar Manage: the price column is too narrow for a button, so the Update button goes in
-        // the row's Details column (the name cell if there is none) and the star after the name.
-        const manageRow = isBazaarPage && currentPage == pages.ViewItems;
-        // Bazaar Add Items is laid out like Manage: the star sits after the item name, and the Fill
+        // Bazaar Add Items is laid out like Manage (see scanManageRows): the star sits after the item name, and the Fill
         // button (with the select box) goes in the cell between the name and the Qty box, the
         // equivalent of Manage's Details column. The price column keeps only the price box.
         // If that cell cannot be found, both go in a row of their own under the name.
         const bazaarAddRow = isBazaarPage && currentPage == pages.AddItems;
-        let descHost = manageRow ? wrapperParent.querySelector('[class*=desc___]') : null;
-        let detailsHost = manageRow ? (wrapperParent.querySelector('[class*=bonuses___]') ?? descHost) : null;
+        let descHost = null;
+        let detailsHost = null;
         if (bazaarAddRow){
             const nameCell = wrapperParent.querySelector('.name-wrap') ?? wrapperParent.querySelector('[class*=desc___]');
             const detailsCell = findBazaarDetailsCell(wrapperParent);
@@ -727,33 +732,12 @@ input.tmf-npc{outline:2px solid #fbbf24!important;outline-offset:-2px}
                 detailsHost = controls;
             }
         }
-        const span = document.createElement('span');
-        span.className = detailsHost != null ? 'fmh-button fmh-inline' : 'fmh-button input-money-symbol';
-        if (detailsHost == null){
-            span.style.position = "relative";
-        }
-        span.setAttribute('data-action-flag', 'fill');
-        span.addEventListener('click', async function(e) {
-            if (holdFired){
-                holdFired = false;
-                return;
-            }
+        const span = buildFillButton(detailsHost != null, 'Fill', function(){
             // Resolved at click time rather than captured at injection, so a reused row
             // always prices the item it is showing now.
             let currentId = getRowItemId(wrapperParent);
-            await handleFillClick(e, currentId > 0 ? currentId : itemId);
+            return currentId > 0 ? currentId : itemId;
         });
-        span.addEventListener('mousedown', startHold);
-        span.addEventListener('touchstart', startHold);
-        span.addEventListener('mouseup', cancelHold);
-        span.addEventListener('mouseleave', cancelHold);
-        span.addEventListener('touchend', cancelHold);
-        span.addEventListener('touchcancel', cancelHold);
-        const input = document.createElement('input');
-        input.type = 'button';
-        input.className = 'fmh-btn';
-        input.value = 'Fill';
-        span.appendChild(input);
 
         const moneyGroup = itemPriceElement.querySelector('.input-money-group');
         const itemIdNum = parseInt(itemId, 10);
@@ -765,20 +749,7 @@ input.tmf-npc{outline:2px solid #fbbf24!important;outline-offset:-2px}
             // A re-render can remount the price wrapper while the row (and our star) survives;
             // guard against stacking a second star on re-scan.
             if (favHost.querySelector('.tmf-fav') == null){
-                const favBtn = document.createElement('span');
-                favBtn.className = 'tmf-fav';
-                renderFavIcon(favBtn, getItemState(itemIdNum));
-                favBtn.dataset.tmfItemId = itemIdNum;
-                favBtn.addEventListener('click', function(e){
-                    e.preventDefault();
-                    e.stopPropagation();
-                    // Read from the element, since refreshRowItemId may have retargeted it.
-                    let currentId = parseInt(favBtn.dataset.tmfItemId, 10);
-                    cycleItemState(currentId);
-                    if (autoFillActive && favourites.has(currentId)){
-                        enqueueFavouriteRow(wrapperParent);
-                    }
-                });
+                const favBtn = buildFavStar(itemIdNum, wrapperParent);
                 if (descHost != null){
                     descHost.append(favBtn);
                 } else {
@@ -812,6 +783,55 @@ input.tmf-npc{outline:2px solid #fbbf24!important;outline-offset:-2px}
         } else {
             placeFillButton(span, detailsHost, moneyGroup);
         }
+    }
+
+    // The Fill / Update button every row carries, built once for all pages so they look and behave
+    // the same: a click fills (or updates) the row, a 2-second press opens the settings.
+    function buildFillButton(inline, label, getId){
+        const span = document.createElement('span');
+        span.className = inline ? 'fmh-button fmh-inline' : 'fmh-button input-money-symbol';
+        if (!inline){
+            span.style.position = "relative";
+        }
+        span.setAttribute('data-action-flag', 'fill');
+        span.addEventListener('click', async function(){
+            if (holdFired){
+                holdFired = false;
+                return;
+            }
+            await triggerFill(span, getId());
+        });
+        span.addEventListener('mousedown', startHold);
+        span.addEventListener('touchstart', startHold);
+        span.addEventListener('mouseup', cancelHold);
+        span.addEventListener('mouseleave', cancelHold);
+        span.addEventListener('touchend', cancelHold);
+        span.addEventListener('touchcancel', cancelHold);
+        const input = document.createElement('input');
+        input.type = 'button';
+        input.className = 'fmh-btn';
+        input.value = label;
+        span.appendChild(input);
+        return span;
+    }
+
+    // The favourite star next to an item's name, built once for all pages.
+    function buildFavStar(itemId, row){
+        const favBtn = document.createElement('span');
+        favBtn.className = 'tmf-fav';
+        renderFavIcon(favBtn, getItemState(itemId));
+        favBtn.dataset.tmfItemId = itemId;
+        favBtn.addEventListener('click', function(e){
+            e.preventDefault();
+            e.stopPropagation();
+            // Read from the element, since refreshRowItemId may have retargeted it.
+            let currentId = parseInt(favBtn.dataset.tmfItemId, 10);
+            cycleItemState(currentId);
+            if (autoFillActive && favourites.has(currentId)){
+                enqueueFavouriteRow(row);
+            }
+        });
+        return favBtn;
     }
 
     // The cell of a bazaar Add Items row that sits between the name and the Qty box: the one
@@ -1679,10 +1699,6 @@ input.tmf-npc{outline:2px solid #fbbf24!important;outline-offset:-2px}
         }
     }
 
-    async function handleFillClick(event, itemId){
-        await triggerFill(event.currentTarget || event.target, itemId);
-    }
-
     async function triggerFill(target, itemId){
         let isFill = target.getAttribute('data-action-flag') == 'fill';
         // A manual Fill on an excluded item still fills — the exclusion only governs Fill All —
@@ -2057,11 +2073,9 @@ input.tmf-npc{outline:2px solid #fbbf24!important;outline-offset:-2px}
         let priceInputs = (priceGroup ?? priceRow ?? target.parentNode).querySelectorAll('input.input-money');
         let action = target.getAttribute('data-action-flag');
         // Bazaar Manage: the button is an "Update" that re-prices on every click and never flips
-        // to Clear.
-        const isManageUpdate = isBazaarPage && getCurrentPage() === pages.ViewItems;
-        if (isManageUpdate && action !== 'fill'){
-            setActionFlag(target, 'fill');
-            action = 'fill';
+        // to Clear (see updateManageRow).
+        if (isBazaarPage && getCurrentPage() === pages.ViewItems){
+            return await updateManageRow(findRowWrapper(target), itemId, !showPopup);
         }
 
         // Clearing needs no prices at all: no request, no popup, just empty the row.
@@ -2113,9 +2127,7 @@ input.tmf-npc{outline:2px solid #fbbf24!important;outline-offset:-2px}
         }
 
         let price = GetPrice(prices, pricing.formula);
-        if (!isManageUpdate){
-            switchActionFlag(target);
-        }
+        switchActionFlag(target);
         priceInputs.forEach(x => {x.value = price});
         priceInputs[0].dispatchEvent(new Event("input", {bubbles: true}));
         await checkNpcPrice(priceRow ?? target, itemId, price, !showPopup);
@@ -2167,7 +2179,6 @@ input.tmf-npc{outline:2px solid #fbbf24!important;outline-offset:-2px}
         }
         let button = target.querySelector('input.fmh-btn');
         let manage = isBazaarPage && getCurrentPage() === pages.ViewItems;
-        target.classList.toggle('fmh-update', manage && flag !== 'clear');
         if (button != null){
             button.value = flag === 'clear' ? 'Clear' : (manage ? 'Update' : 'Fill');
         }
@@ -2828,6 +2839,15 @@ input.tmf-npc{outline:2px solid #fbbf24!important;outline-offset:-2px}
             report.className = 'tmf-fillall-report';
             report.title = 'Session receipt: what you have listed and what it is worth';
             report.innerHTML = '<span class="tmf-report-icon">&#129534;</span><span class="tmf-report-label">Session receipt</span><span class="tmf-report-count"></span>';
+            const updateAll = document.createElement('span');
+            updateAll.className = 'tmf-fillall-report tmf-update-all';
+            updateAll.title = 'Re-price every listing on this page with your Bazaar setting. Listings at $1 are left alone.';
+            updateAll.innerHTML = '<span class="tmf-report-icon">&#8635;</span><span class="tmf-report-label">Update all</span>';
+            updateAll.style.display = 'none';
+            updateAll.addEventListener('click', function(event){
+                event.stopPropagation();
+                updateAllManage();
+            });
             if (isBazaarPage){
                 const dollar = document.createElement('span');
                 dollar.className = 'tmf-fillall-dollar';
@@ -2845,7 +2865,7 @@ input.tmf-npc{outline:2px solid #fbbf24!important;outline-offset:-2px}
                     dollar.classList.toggle('tmf-fillall-dollar--on', dollarBazaar);
                     showToast(dollarBazaar ? 'Dollar bazaar ON: fills list at $1.' : 'Dollar bazaar off: normal pricing.');
                 });
-                body.append(btn, report, cog, dollar);
+                body.append(btn, updateAll, report, cog, dollar);
             } else {
                 body.append(btn, report, cog);
             }
@@ -2933,7 +2953,8 @@ input.tmf-npc{outline:2px solid #fbbf24!important;outline-offset:-2px}
     function updateAutoFillUI(){
         let bar = document.querySelector(".tmf-fillall-bar");
         if (bar != null) {
-            bar.querySelector(".tmf-fillall-btn").value = autoFillActive ? "Stop" : "Fill All ★";
+            let idle = (isBazaarPage && getCurrentPage() === pages.ViewItems) ? "Update ★ favourites" : "Fill All ★";
+            bar.querySelector(".tmf-fillall-btn").value = autoFillActive ? "Stop" : idle;
             bar.classList.toggle("tmf-fillall-bar--active", autoFillActive);
         }
         let border = document.querySelector(".tmf-viewport-border");
@@ -3083,10 +3104,6 @@ input.tmf-npc{outline:2px solid #fbbf24!important;outline-offset:-2px}
         }
     }
 
-    function saveCategoryDeltas(){
-        localStorage.setItem(categoryDeltasKey, JSON.stringify(categoryDeltas));
-    }
-
     function loadCategoryQuantities(){
         try {
             let parsed = JSON.parse(localStorage.getItem(categoryQuantitiesKey) ?? "{}");
@@ -3095,10 +3112,6 @@ input.tmf-npc{outline:2px solid #fbbf24!important;outline-offset:-2px}
             console.error("[FreakyMarketHelper] Failed to load category quantities:", error);
             return {};
         }
-    }
-
-    function saveCategoryQuantities(){
-        localStorage.setItem(categoryQuantitiesKey, JSON.stringify(categoryQuantities));
     }
 
     function loadItemCategoryCache(){
@@ -3263,6 +3276,10 @@ input.tmf-npc{outline:2px solid #fbbf24!important;outline-offset:-2px}
 
     // Add Items and Manage rows on the bazaar get the same Fill button, select box and star as the Item Market.
     function scanBazaarRows(root){
+        if (currentPage == pages.ViewItems){
+            scanManageRows(root);
+            return;
+        }
         root.querySelectorAll('.input-money:not([type=hidden])').forEach(function(input){
             if (input.closest('[class*=removeAmountInput]') != null){
                 return;
@@ -3352,6 +3369,243 @@ input.tmf-npc{outline:2px solid #fbbf24!important;outline-offset:-2px}
             }
         }).observe(root, { childList: true, subtree: true });
         scan();
+    }
+
+    // ---- Bazaar Manage ---------------------------------------------------------------------
+    // Manage rows are found from their item picture, never from their price box. The price box only
+    // exists while a row is open, and on a phone the open part can sit outside the row's own
+    // element; anchoring on the price box made one "row" swallow the whole list, so every price came
+    // from the first item. Each item's boxes are now the ones between its picture and the next
+    // item's picture, in page order, which holds for either layout.
+    const MANAGE_IMG = 'img[src*="items/"]';
+
+    function manageImages(root){
+        return Array.from(root.querySelectorAll(MANAGE_IMG)).filter(function(img){
+            return img.closest('.tmf-fillall-bar, .tmf-modal-overlay, .tmf-toast') == null && /items\/\d+\//.test(img.src);
+        });
+    }
+
+    function manageRoot(){
+        return document.querySelector('#bazaarRoot') ?? document.body;
+    }
+
+    // The biggest element that still holds just this one item picture.
+    function manageHeader(img, root){
+        let el = img;
+        for (let depth = 0; depth < 8 && el.parentElement != null && el.parentElement !== root && el.parentElement !== document.body
+             && el.parentElement.querySelectorAll(MANAGE_IMG).length === 1; depth++){
+            el = el.parentElement;
+        }
+        return el;
+    }
+
+    function manageItemId(header){
+        let img = header.querySelector(MANAGE_IMG);
+        let match = img != null ? img.src.match(/items\/(\d+)\//) : null;
+        return match != null ? parseInt(match[1], 10) : -1;
+    }
+
+    function manageInputs(header){
+        let root = manageRoot();
+        let imgs = manageImages(root);
+        let mine = header.querySelector(MANAGE_IMG);
+        let at = imgs.indexOf(mine);
+        if (mine == null || at < 0){
+            return [];
+        }
+        let next = imgs[at + 1] ?? null;
+        return Array.from(root.querySelectorAll('input.input-money')).filter(function(input){
+            if (input.closest('[class*=removeAmountInput]') != null){
+                return false;
+            }
+            let after = (mine.compareDocumentPosition(input) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+            let before = next == null || (next.compareDocumentPosition(input) & Node.DOCUMENT_POSITION_PRECEDING) !== 0;
+            return after && before;
+        });
+    }
+
+    // The little arrow that opens a row, when the price box is not on the page until it is open.
+    function findManageToggle(header){
+        let candidates = header.querySelectorAll('[aria-expanded], [class*=arrow], [class*=Arrow], [class*=expand], [class*=toggle], [class*=chevron], [class*=caret]');
+        for (let i = 0; i < candidates.length; i++){
+            if (candidates[i].closest('.fmh-button, .tmf-fav') == null){
+                return candidates[i];
+            }
+        }
+        return null;
+    }
+
+    function scanManageRows(root){
+        manageImages(root).forEach(function(img){
+            let header = manageHeader(img, root);
+            let id = manageItemId(header);
+            if (!(id > 0)){
+                return;
+            }
+            if (header.querySelector('.fmh-button') != null){
+                refreshRowItemId(header);
+                return;
+            }
+            header.classList.add('tmf-bz-row', 'fmh-processed');
+            header.dataset.tmfItemId = id;
+            let descHost = header.querySelector('[class*=desc___]') ?? header.querySelector('.name-wrap');
+            let detailsHost = header.querySelector('[class*=bonuses___]') ?? descHost ?? img.parentElement;
+            if (descHost == null){
+                descHost = detailsHost;
+            }
+            const span = buildFillButton(true, 'Update', function(){
+                let currentId = manageItemId(header);
+                return currentId > 0 ? currentId : id;
+            });
+            const favBtn = buildFavStar(id, header);
+            if (descHost.querySelector('.tmf-fav') == null){
+                descHost.append(favBtn);
+            }
+            placeFillButton(span, detailsHost, null);
+            if (autoFillActive){
+                enqueueFavouriteRow(header);
+            }
+        });
+    }
+
+    // Re-price one Manage row. A row left at $1 is skipped on purpose (a deliberate dollar
+    // listing). Returns 'ok', 'skipped' (nothing changed) or a pricing status such as 'rate-limited'.
+    async function updateManageRow(header, itemId, quiet){
+        let id = header != null ? manageItemId(header) : -1;
+        if (!(id > 0)){
+            id = parseInt(itemId, 10);
+        }
+        if (header == null || !(id > 0)){
+            return 'error';
+        }
+        let inputs = manageInputs(header);
+        if (inputs.length === 0){
+            let toggle = findManageToggle(header);
+            if (toggle != null){
+                toggle.click();
+                for (let tries = 0; tries < 25 && inputs.length === 0; tries++){
+                    await sleep(100);
+                    inputs = manageInputs(header);
+                }
+            }
+            if (inputs.length === 0){
+                if (!quiet){
+                    showToast('Open this item first (tap its arrow), then press Update.');
+                }
+                return 'skipped';
+            }
+        }
+        let visible = inputs.find(function(x){ return x.type !== 'hidden'; }) ?? inputs[0];
+        let current = parseInt(String(visible.value).replace(/[^0-9]/g, ''), 10);
+        if (current === 1){
+            if (!quiet){
+                showToast('Left at $1: a $1 listing is never updated.');
+            }
+            return 'dollar';
+        }
+        let pricing = await fetchPricingForItem(id);
+        let prices = pricing.prices;
+        let status = getPricesStatus(prices);
+        if (status !== 'ok'){
+            if (!quiet){
+                showToast(prices != null && prices.price != null ? String(prices.price) : 'Could not price this item.');
+            }
+            return status;
+        }
+        let price = GetPrice(prices, pricing.formula);
+        inputs.forEach(function(x){ x.value = price; });
+        inputs[0].dispatchEvent(new Event('input', { bubbles: true }));
+        await checkNpcPrice(header, id, price, quiet);
+        return 'ok';
+    }
+
+    let manageUpdating = false;
+    let manageStopRequested = false;
+
+    // Update every listing on the Manage page, one after another, leaving $1 listings and
+    // excluded items alone. Pressing the button again while it runs stops it.
+    async function updateAllManage(){
+        if (manageUpdating){
+            manageStopRequested = true;
+            showToast('Stopping after this item...');
+            return;
+        }
+        checkApiKey();
+        if (needsTornApiKey() && !hasUsableApiKey()){
+            showToast('A public Torn API key is needed for this price source. Add one in the settings (⚙).');
+            return;
+        }
+        manageUpdating = true;
+        manageStopRequested = false;
+        setUpdateAllLabel('Stop');
+        let counts = { ok: 0, dollar: 0, excluded: 0, skipped: 0, failed: 0 };
+        try {
+            let root = manageRoot();
+            let headers = manageImages(root).map(function(img){ return manageHeader(img, root); });
+            for (let i = 0; i < headers.length && !manageStopRequested; i++){
+                let header = headers[i];
+                if (!header.isConnected){
+                    continue;
+                }
+                let id = manageItemId(header);
+                if (excluded.has(id)){
+                    counts.excluded++;
+                    continue;
+                }
+                let status;
+                try {
+                    status = await updateManageRow(header, id, true);
+                } catch (error) {
+                    console.error("[FreakyMarketHelper] Update failed for item " + id + ":", error);
+                    status = 'error';
+                }
+                if (status === 'rate-limited'){
+                    await sleep(randomBetween(RATE_LIMIT_PAUSE_MIN_MS, RATE_LIMIT_PAUSE_MAX_MS));
+                    i--;
+                    counts.retries = (counts.retries ?? 0) + 1;
+                    if (counts.retries > MAX_RATE_LIMIT_RETRIES * 4){
+                        break;
+                    }
+                    continue;
+                }
+                if (status === 'invalid-key'){
+                    showToast('Your API key was rejected. Check it in the settings.');
+                    break;
+                }
+                if (status === 'ok'){ counts.ok++; }
+                else if (status === 'dollar'){ counts.dollar++; }
+                else if (status === 'skipped'){ counts.skipped++; }
+                else { counts.failed++; }
+                await sleep(randomBetween(FILL_COOLDOWN_MIN_MS, FILL_COOLDOWN_MAX_MS));
+            }
+        } finally {
+            manageUpdating = false;
+            setUpdateAllLabel('Update all');
+        }
+        let parts = ['Updated ' + counts.ok];
+        if (counts.dollar > 0){ parts.push(counts.dollar + ' left at $1'); }
+        if (counts.excluded > 0){ parts.push(counts.excluded + ' excluded'); }
+        if (counts.skipped > 0){ parts.push(counts.skipped + ' not opened'); }
+        if (counts.failed > 0){ parts.push(counts.failed + ' failed'); }
+        showToast(parts.join(', ') + '. Press Save changes to keep them.');
+    }
+
+    function setUpdateAllLabel(text){
+        document.querySelectorAll('.tmf-update-all .tmf-report-label').forEach(function(el){ el.textContent = text; });
+    }
+
+    // The panel only shows what the current page can use: Update all on Manage, the session receipt
+    // and the $1 mode on Add Items (nothing is recorded or listed anywhere else).
+    function syncPanelForPage(){
+        let page = getCurrentPage();
+        let manage = isBazaarPage && page === pages.ViewItems;
+        let setShown = function(selector, show){
+            document.querySelectorAll(selector).forEach(function(el){ el.style.display = show ? '' : 'none'; });
+        };
+        setShown('.tmf-update-all', manage);
+        setShown('.tmf-fillall-report:not(.tmf-update-all)', page === pages.AddItems);
+        setShown('.tmf-fillall-dollar', page === pages.AddItems);
+        updateAutoFillUI();
     }
 
     // ---- Session receipt ---------------------------------------------------------------------
