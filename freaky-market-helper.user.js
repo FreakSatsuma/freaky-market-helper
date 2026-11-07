@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Freaky Market Helper
 // @namespace    https://www.torn.com/profiles.php?XID=4313844
-// @version      1.6.10
+// @version      1.6.11
 // @description  Fill your Torn Item Market and Bazaar listings in one click. Prices from the cheapest listing, average price, market value or live bazaars (weav3r.dev), with your own formulas and min/max ranges, quantity rules, favourites with Fill All, a session receipt and a dollar bazaar mode. Settings are kept separately for the Item Market and the Bazaar.
 // @author       FreakSatsuma [4313844]
 // @license      MIT License
@@ -68,7 +68,7 @@
     }
 
     // Keep in sync with @version above — it keys the "What's new" popup.
-    const SCRIPT_VERSION = "1.6.10";
+    const SCRIPT_VERSION = "1.6.11";
 
     const itemUrl = "https://api.torn.com/torn/{itemId}?selections=items&key={apiKey}&comment=MarketFiller";
     const marketUrlV2 = "https://api.torn.com/v2/market?id={itemId}&selections=itemMarket&key={apiKey}&comment=MarketFiller";
@@ -338,6 +338,15 @@ input.tmf-npc{outline:2px solid #fbbf24!important;outline-offset:-2px}
     // Write every line for a player, not a developer: one short sentence, plain words,
     // what changed for them rather than what changed in the code.
     const CHANGELOG = [
+        {
+            version: "1.6.11",
+            date: "2026-11-06",
+            changes: [
+                'Pressing Fill, Update, the star or the select box no longer opens the item description. The press stays on our button instead of reaching the item bar underneath.',
+                'That also fixes the quantity sometimes not filling: opening the description made Torn redraw the row and wipe the amount. After a Fill the script now double-checks the amount and puts it back if it was lost.',
+                'Fill All only fills the favourites you can actually see. If you have a category tab open, favourites in other tabs are left alone.'
+            ]
+        },
         {
             version: "1.6.10",
             date: "2026-11-06",
@@ -764,9 +773,8 @@ input.tmf-npc{outline:2px solid #fbbf24!important;outline-offset:-2px}
                 const selectBox = document.createElement('span');
                 selectBox.className = 'tmf-select';
                 selectBox.title = 'Select this item: prices it and fills the quantity. Click again to clear.';
+                shieldFromRow(selectBox);
                 selectBox.addEventListener('click', async function(e){
-                    e.preventDefault();
-                    e.stopPropagation();
                     let currentId = getRowItemId(wrapperParent);
                     await triggerFill(span, currentId > 0 ? currentId : itemId);
                 });
@@ -785,6 +793,20 @@ input.tmf-npc{outline:2px solid #fbbf24!important;outline-offset:-2px}
         }
     }
 
+    // Our controls sit on top of Torn's item bar, which toggles the item description when it is
+    // tapped. Keep every press on our own control from reaching the bar underneath, so tapping
+    // Fill, Update, the star or the select box never opens (or closes, and re-renders) the row.
+    function shieldFromRow(el){
+        ['click', 'mousedown', 'mouseup', 'pointerdown', 'pointerup', 'touchstart', 'touchend', 'touchcancel', 'keydown', 'keyup'].forEach(function(type){
+            el.addEventListener(type, function(e){
+                e.stopPropagation();
+                if (type === 'click'){
+                    e.preventDefault();
+                }
+            });
+        });
+    }
+
     // The Fill / Update button every row carries, built once for all pages so they look and behave
     // the same: a click fills (or updates) the row, a 2-second press opens the settings.
     function buildFillButton(inline, label, getId){
@@ -794,6 +816,7 @@ input.tmf-npc{outline:2px solid #fbbf24!important;outline-offset:-2px}
             span.style.position = "relative";
         }
         span.setAttribute('data-action-flag', 'fill');
+        shieldFromRow(span);
         span.addEventListener('click', async function(){
             if (holdFired){
                 holdFired = false;
@@ -821,9 +844,8 @@ input.tmf-npc{outline:2px solid #fbbf24!important;outline-offset:-2px}
         favBtn.className = 'tmf-fav';
         renderFavIcon(favBtn, getItemState(itemId));
         favBtn.dataset.tmfItemId = itemId;
+        shieldFromRow(favBtn);
         favBtn.addEventListener('click', function(e){
-            e.preventDefault();
-            e.stopPropagation();
             // Read from the element, since refreshRowItemId may have retargeted it.
             let currentId = parseInt(favBtn.dataset.tmfItemId, 10);
             cycleItemState(currentId);
@@ -1918,6 +1940,28 @@ input.tmf-npc{outline:2px solid #fbbf24!important;outline-offset:-2px}
         return 'ok';
     }
 
+    // Torn can redraw a row right after we write to it (for instance when its description opens),
+    // wiping the amount we just set. Look again once things have settled and, if the amount or the
+    // tick is gone, apply the quantity once more.
+    async function confirmQuantity(target, action, category, isAuto){
+        await sleep(250);
+        let row = findInfoRow(target);
+        if (row == null || !row.isConnected || row.classList.contains('tmf-bz-row')){
+            return;
+        }
+        let inputs = rowAmountInputs(row);
+        let lost;
+        if (inputs.length > 0){
+            lost = String(inputs[0].value).replace(/[^\d]/g, '') === '' || parseInt(inputs[0].value, 10) < 1;
+        } else {
+            let checkbox = row.querySelector('[class^=checkboxWrapper___] > [class^=checkboxContainer___] [type=checkbox]');
+            lost = checkbox != null && !checkbox.checked;
+        }
+        if (lost){
+            await applyQuantity(target, action, category, isAuto);
+        }
+    }
+
     function reportSkipped(mode, maxQuantity, isAuto){
         let modeLabel = String(mode ?? 'max').trim();
         console.info("[FreakyMarketHelper] Row left untouched — quantity mode '" + modeLabel +
@@ -2118,12 +2162,14 @@ input.tmf-npc{outline:2px solid #fbbf24!important;outline-offset:-2px}
         // Quantity/checkbox handling only exists on the Add Items page. Your Items (view
         // listings) rows carry a remove-amount input instead — touching it would be wrong,
         // and the missing containers used to throw and abort the Fill All loop.
+        let quantityApplied = false;
         if (getCurrentPage() == pages.AddItems){
             let quantityStatus = await applyQuantity(target, action, pricing.category, !showPopup);
             if (quantityStatus === 'skipped'){
                 // Nothing is being listed, so leave the price (and the button state) alone.
                 return 'skipped';
             }
+            quantityApplied = true;
         }
 
         let price = GetPrice(prices, pricing.formula);
@@ -2131,6 +2177,9 @@ input.tmf-npc{outline:2px solid #fbbf24!important;outline-offset:-2px}
         priceInputs.forEach(x => {x.value = price});
         priceInputs[0].dispatchEvent(new Event("input", {bubbles: true}));
         await checkNpcPrice(priceRow ?? target, itemId, price, !showPopup);
+        if (quantityApplied){
+            await confirmQuantity(target, action, pricing.category, !showPopup);
+        }
         if (getCurrentPage() == pages.AddItems){
             await recordListing(target, itemId, price, describeFill(prices, pricing.formula));
         }
@@ -3012,8 +3061,32 @@ input.tmf-npc{outline:2px solid #fbbf24!important;outline-offset:-2px}
         document.querySelectorAll(".fmh-processed[data-tmf-item-id]").forEach(enqueueFavouriteRow);
     }
 
+    // Whether a row is actually showing: a row in a category tab that is not open can still be in
+    // the page, but hidden, and Fill All must leave it alone.
+    function isRowShown(el){
+        if (el == null || !el.isConnected){
+            return false;
+        }
+        if (typeof el.checkVisibility === 'function'){
+            if (!el.checkVisibility({ visibilityProperty: true, opacityProperty: false })){
+                return false;
+            }
+        }
+        if (el.getClientRects().length === 0){
+            return false;
+        }
+        let rect = el.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0){
+            return false;
+        }
+        return el.closest('[hidden], [aria-hidden="true"]') == null;
+    }
+
     function enqueueFavouriteRow(wrapper){
         if (!autoFillActive) {
+            return;
+        }
+        if (!isRowShown(wrapper)) {
             return;
         }
         let itemId = parseInt(wrapper.dataset.tmfItemId, 10);
@@ -3034,9 +3107,9 @@ input.tmf-npc{outline:2px solid #fbbf24!important;outline-offset:-2px}
             while (autoFillActive && autoFillQueue.length > 0) {
                 let wrapper = autoFillQueue.shift();
                 let itemId = parseInt(wrapper.dataset.tmfItemId, 10);
-                if (!wrapper.isConnected || !favourites.has(itemId) || excluded.has(itemId)) {
-                    // Row unmounted or unfavourited meanwhile; the observer re-queues it
-                    // if it shows up again.
+                if (!isRowShown(wrapper) || !favourites.has(itemId) || excluded.has(itemId)) {
+                    // Row unmounted, hidden (another category tab was opened) or unfavourited
+                    // meanwhile; the observer re-queues it if it shows up again.
                     autoFillQueuedIds.delete(itemId);
                     continue;
                 }
